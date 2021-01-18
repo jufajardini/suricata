@@ -31,11 +31,6 @@
 #include <signal.h>
 #endif
 
-#ifdef HAVE_NSS
-#include <prinit.h>
-#include <nss.h>
-#endif
-
 #include "suricata.h"
 #include "decode.h"
 #include "feature.h"
@@ -233,6 +228,10 @@ int g_disable_randomness = 1;
   * comparing flows */
 uint16_t g_vlan_mask = 0xffff;
 
+/* flag to disable hashing almost globally, to be similar to disabling nss
+ * support */
+bool g_disable_hashing = false;
+
 /** Suricata instance */
 SCInstance suricata;
 
@@ -353,12 +352,6 @@ static void GlobalsDestroy(SCInstance *suri)
     TmqhCleanup();
     TmModuleRunDeInit();
     ParseSizeDeinit();
-#ifdef HAVE_NSS
-    if (NSS_IsInitialized()) {
-        NSS_Shutdown();
-        PR_Cleanup();
-    }
-#endif
 
 #ifdef HAVE_AF_PACKET
     AFPPeersListClean();
@@ -699,9 +692,8 @@ static void PrintBuildInfo(void)
 #ifdef PCRE_HAVE_JIT
     strlcat(features, "PCRE_JIT ", sizeof(features));
 #endif
-#ifdef HAVE_NSS
+    /* For compatibility, just say we have HAVE_NSS. */
     strlcat(features, "HAVE_NSS ", sizeof(features));
-#endif
 #ifdef HAVE_LUA
     strlcat(features, "HAVE_LUA ", sizeof(features));
 #endif
@@ -1185,6 +1177,7 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
     g_ut_covered = 0;
 #endif
 
+    // clang-format off
     struct option long_opts[] = {
         {"dump-config", 0, &dump_config, 1},
         {"dump-features", 0, &dump_features, 1},
@@ -1224,6 +1217,7 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
         {"pidfile", required_argument, 0, 0},
         {"init-errors-fatal", 0, 0, 0},
         {"disable-detection", 0, 0, 0},
+        {"disable-hashing", 0, 0, 0},
         {"fatal-unittests", 0, 0, 0},
         {"unittests-coverage", 0, &coverage_unittests, 1},
         {"user", required_argument, 0, 0},
@@ -1246,6 +1240,7 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
 #endif
         {NULL, 0, NULL, 0}
     };
+    // clang-format on
 
     /* getopt_long stores the option index here. */
     int option_index = 0;
@@ -1425,16 +1420,16 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
             }
             else if(strcmp((long_opts[option_index]).name, "disable-detection") == 0) {
                 g_detect_disabled = suri->disabled_detect = 1;
-            }
-            else if(strcmp((long_opts[option_index]).name, "fatal-unittests") == 0) {
+            } else if (strcmp((long_opts[option_index]).name, "disable-hashing") == 0) {
+                g_disable_hashing = true;
+            } else if (strcmp((long_opts[option_index]).name, "fatal-unittests") == 0) {
 #ifdef UNITTESTS
                 unittests_fatal = 1;
 #else
                 fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
                 return TM_ECODE_FAILED;
 #endif /* UNITTESTS */
-            }
-            else if(strcmp((long_opts[option_index]).name, "user") == 0) {
+            } else if (strcmp((long_opts[option_index]).name, "user") == 0) {
 #ifndef HAVE_LIBCAP_NG
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
@@ -1443,8 +1438,7 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
                 suri->user_name = optarg;
                 suri->do_setuid = TRUE;
 #endif /* HAVE_LIBCAP_NG */
-            }
-            else if(strcmp((long_opts[option_index]).name, "group") == 0) {
+            } else if (strcmp((long_opts[option_index]).name, "group") == 0) {
 #ifndef HAVE_LIBCAP_NG
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
@@ -1453,15 +1447,13 @@ static TmEcode ParseCommandLine(int argc, char** argv, SCInstance *suri)
                 suri->group_name = optarg;
                 suri->do_setgid = TRUE;
 #endif /* HAVE_LIBCAP_NG */
-            }
-            else if (strcmp((long_opts[option_index]).name, "erf-in") == 0) {
+            } else if (strcmp((long_opts[option_index]).name, "erf-in") == 0) {
                 suri->run_mode = RUNMODE_ERF_FILE;
                 if (ConfSetFinal("erf-file.file", optarg) != 1) {
                     fprintf(stderr, "ERROR: Failed to set erf-file.file\n");
                     return TM_ECODE_FAILED;
                 }
-            }
-            else if (strcmp((long_opts[option_index]).name, "dag") == 0) {
+            } else if (strcmp((long_opts[option_index]).name, "dag") == 0) {
 #ifdef HAVE_DAG
                 if (suri->run_mode == RUNMODE_UNKNOWN) {
                     suri->run_mode = RUNMODE_DAG;
@@ -2589,15 +2581,6 @@ int PostConfLoadedSetup(SCInstance *suri)
                 "Shutting down the engine", suri->log_dir, suri->conf_filename);
         SCReturnInt(TM_ECODE_FAILED);
     }
-
-
-#ifdef HAVE_NSS
-    if (suri->run_mode != RUNMODE_CONF_TEST) {
-        /* init NSS for hashing */
-        PR_Init(PR_USER_THREAD, PR_PRIORITY_NORMAL, 0);
-        NSS_NoDB_Init(NULL);
-    }
-#endif
 
     if (suri->disabled_detect) {
         SCLogConfig("detection engine disabled");

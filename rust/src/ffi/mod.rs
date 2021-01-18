@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 Open Information Security Foundation
+/* Copyright (C) 2020 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -15,15 +15,4 @@
  * 02110-1301, USA.
  */
 
-/**
- * \file
- *
- * \author Victor Julien <victor@inliniac.net>
- */
-
-#ifndef __APP_LAYER_NFS_TCP_H__
-#define __APP_LAYER_NFS_TCP_H__
-
-void RegisterNFSTCPParsers(void);
-
-#endif /* __APP_LAYER_NFS_TCP_H__ */
+pub mod hashing;

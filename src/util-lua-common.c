@@ -754,9 +754,12 @@ static int LuaCallbackLogError(lua_State *luastate)
  */
 static int LuaCallbackFileInfoPushToStackFromFile(lua_State *luastate, const File *file)
 {
-#ifdef HAVE_NSS
+    char *md5ptr = NULL;
+    char *sha1ptr = NULL;
+    char *sha256ptr = NULL;
+
     char md5[33] = "";
-    char *md5ptr = md5;
+    md5ptr = md5;
     if (file->flags & FILE_MD5) {
         size_t x;
         for (x = 0; x < sizeof(file->md5); x++) {
@@ -766,7 +769,7 @@ static int LuaCallbackFileInfoPushToStackFromFile(lua_State *luastate, const Fil
         }
     }
     char sha1[41] = "";
-    char *sha1ptr = sha1;
+    sha1ptr = sha1;
     if (file->flags & FILE_SHA1) {
         size_t x;
         for (x = 0; x < sizeof(file->sha1); x++) {
@@ -776,7 +779,7 @@ static int LuaCallbackFileInfoPushToStackFromFile(lua_State *luastate, const Fil
         }
     }
     char sha256[65] = "";
-    char *sha256ptr = sha256;
+    sha256ptr = sha256;
     if (file->flags & FILE_SHA256) {
         size_t x;
         for (x = 0; x < sizeof(file->sha256); x++) {
@@ -785,11 +788,6 @@ static int LuaCallbackFileInfoPushToStackFromFile(lua_State *luastate, const Fil
             strlcat(sha256, one, sizeof(sha256));
         }
     }
-#else
-    char *md5ptr = NULL;
-    char *sha1ptr = NULL;
-    char *sha256ptr = NULL;
-#endif
 
     lua_pushnumber(luastate, file->file_store_id);
     lua_pushnumber(luastate, file->txid);
