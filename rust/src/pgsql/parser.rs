@@ -203,24 +203,26 @@ impl fmt::Display for PgsqlBEMessage {
 }
 
 impl PgsqlBEMessage {
-    pub fn get_message_type(&self) -> u8 {
+    pub fn get_message_type(&self) -> &str {
         match self {
-            PgsqlBEMessage::SslResponse(_) => 1,
-            PgsqlBEMessage::ErrorResponse(_) => 2,
-            PgsqlBEMessage::NoticeResponse(_) => 3,
-            PgsqlBEMessage::AuthenticationOk(_) => 4,
-            PgsqlBEMessage::AuthenticationKerb5(_) => 5,
-            PgsqlBEMessage::AuthenticationCleartextPassword(_) => 6,
-            PgsqlBEMessage::AuthenticationMD5Password(_) => 7,
-            PgsqlBEMessage::AuthenticationGSS(_) => 8,
-            PgsqlBEMessage::AuthenticationSSPI(_) => 9,
-            PgsqlBEMessage::AuthenticationGSSContinue(_) => 10,
-            PgsqlBEMessage::AuthenticationSASL(_) => 11,
-            PgsqlBEMessage::AuthenticationSASLContinue(_) => 12,
-            PgsqlBEMessage::AuthenticationSASLFinal(_) => 13,
-            PgsqlBEMessage::ParameterStatus(_) => 14,
-            PgsqlBEMessage::BackendKeyData(_) => 15,
-            PgsqlBEMessage::ReadyForQuery(_) => 16,
+            PgsqlBEMessage::SslResponse(SslResponse::SslAccepted) => "SslAccepted",
+            PgsqlBEMessage::SslResponse(SslResponse::SslRejected) => "SslRejected",
+            PgsqlBEMessage::ErrorResponse(_) => "ErrorResponse",
+            PgsqlBEMessage::NoticeResponse(_) => "NoticeResponse",
+            PgsqlBEMessage::AuthenticationOk(_) => "AuthenticationOk",
+            PgsqlBEMessage::AuthenticationKerb5(_) => "AuthenticationKerb5",
+            PgsqlBEMessage::AuthenticationCleartextPassword(_) => "AuthenticationCleartextPassword",
+            PgsqlBEMessage::AuthenticationMD5Password(_) => "AuthenticationMD5Password",
+            PgsqlBEMessage::AuthenticationGSS(_) => "AuthenticationGSS",
+            PgsqlBEMessage::AuthenticationSSPI(_) => "AuthenticationSSPI",
+            PgsqlBEMessage::AuthenticationGSSContinue(_) => "AuthenticationGSSContinue",
+            PgsqlBEMessage::AuthenticationSASL(_) => "AuthenticationSASL",
+            PgsqlBEMessage::AuthenticationSASLContinue(_) => "AuthenticationSASLContinue",
+            PgsqlBEMessage::AuthenticationSASLFinal(_) => "AuthenticationSASLFinal",
+            PgsqlBEMessage::ParameterStatus(_) => "ParameterStatus",
+            PgsqlBEMessage::BackendKeyData(_) => "BackendKeyData",
+            PgsqlBEMessage::ReadyForQuery(_) => "ReadyForQuery",
+            PgsqlBEMessage::SslResponse(SslResponse::InvalidResponse) => "InvalidBEMessage",
         }
     }
 
@@ -504,6 +506,19 @@ named!(pub pgsql_parse_startup_packet<PgsqlFEMessage>,
                         ))
         >> (message)
     ));
+
+// TODO Decide if it's a good idea to offer GSS encryption support right now, as the documentation seems to
+// have conflicting information...
+// If I do:
+// To initiate a GSSAPI-encrypted connection, the frontend initially sends a GSSENCRequest message rather than a
+// StartupMessage. The server then responds with a single byte containing G or N, indicating that it is willing or unwilling to perform GSSAPI encryption, respectively. The frontend might close the connection at this point if it is
+// dissatisfied with the response. To continue after G, using the GSSAPI C bindings as discussed in RFC2744 or equivalent,
+// perform a GSSAPI initialization by calling gss_init_sec_context() in a loop and sending the result to the server,
+// starting with an empty input and then with each result from the server, until it returns no output. When sending the
+// results of gss_init_sec_context() to the server, prepend the length of the message as a four byte integer in network
+// byte order. To continue after N, send the usual StartupMessage and proceed without encryption. (Alternatively, it is
+// permissible to issue an SSLRequest message after an N response to try to use SSL encryption instead of GSSAPI.)
+// Source: https://www.postgresql.org/docs/13/protocol-flow.html#id-1.10.5.7.11, GSSAPI Session Encryption
 
 // Password can be encrypted or in cleartext
 named!(pgsql_parse_password_message<PgsqlFEMessage>,

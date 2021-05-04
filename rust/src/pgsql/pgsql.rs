@@ -87,13 +87,14 @@ impl Drop for PgsqlTransaction {
         self.free();
     }
 }
-
 #[derive(Debug, PartialEq)]
 pub enum PgsqlStateProgress {
     IdleState = 0,
-    StartupMessageReceived,
-    SASLInitialResponseReceived,
     SSLRequestReceived,
+    StartupMessageReceived,
+    SASLAuthenticationReceived,
+    SASLInitialResponseReceived,
+    SSLAcceptedReceived,
     PasswordMessageReceived,
     ConnectionCompleted,
     ReadyForQueryReceived,
@@ -157,19 +158,8 @@ impl PgsqlState {
         return tx;
     }
 
-    // TODO this will probably be replaced by find_or_create_tx
-    // fn find_request(&mut self) -> Option<&mut PgsqlTransaction> {
-    //     // TODO this must be changed, now. HTTP2 doesn't do this, as far as I could tell...
-    //     // So I may or may not keep it. I'll have to decide
-    //     for tx in &mut self.transactions {
-    //         if tx.response.is_none() {
-    //             return Some(tx);
-    //         }
-    //     }
-    //     None
-    // }
-
-    // find or create a new transaction
+    /// Find or create a new transaction
+    /// If a new transaction is created, push that into state.transactions
     // TODO future, improved version may be based on current message type and dir, too
     fn find_or_create_tx(&mut self) -> &mut PgsqlTransaction {
         // First, check if we should create a new tx (in case the other was completed or there's no tx yet)
@@ -206,36 +196,15 @@ impl PgsqlState {
 
         let mut start = input;
         while start.len() > 0 {
-            // I think this whole block must be redesigned. Already. lol.
-            // Lol, indeed. But let's face the facts:
-            /*
-                - there may be situations where, for the same flow, there will be more than one
-                startupmessage. So I can't assume that those will only happen when there aren't any
-                transactions in the State.
-                - It is probably cleaner to have a method that returns message type, instead of directly
-                trying to extract that from the message. hmmm....
 
-                - so, for the first issue, I can probably have just one match, and check message type
-                for whatever is the returned request...?
-            */
-            // if self.transactions.len() == 0 {
-            //     match parser::pgsql_parse_startup_packet(start) {
-            //         Ok((ram, request)) => {
-            //             start = rem;
-            //             SCLogNotice!("Request: {:?}", request);
-            //             let mut tx = self.new_tx();
-            //             tx.request = Some(request);
-            //             let mut e: PgsqlEvent;
-            //             let request_type = request.message_type;
+            // TODO rewrite this, in light of PgsqlStateProgress
+            // if PgsqlStateProgress is Idle and transactions is empty, parse startup messages/packets
+            // if PgsqlStateProgress is AuthenticationSASL, parse SASL initial response
+            // if PgsqlStateProgress is AuthenticationSASLContinue, parse SASL response
+            // if PgsqlStateProgress is AuthenticationGSS, parse GSS response -> TODO decide if we should offer support for it in the first version
+            // if PgsqlStateProgress is AuthenticationSSPI, parse SSPI response -> make sure I have the proper nom parser
+            // if PgsqlStateProgress is ReadyForQueryReceived, parse a query...
 
-            //             if request_type {
-            //                 e = PgsqlEvent::SslAccepted;
-            //             } else if
-
-            //             self.transactions.push(tx);
-            //         }
-            //     }
-            // } // TODO clean this up, add logic for response, add tests!
             match parser::pgsql_parse_request(start) {
                 Ok((rem, request)) => {
                     start = rem;
@@ -304,27 +273,31 @@ impl PgsqlState {
         }
         let mut start = input;
         while start.len() > 0 {
+            // TODO this must be revamped, to take into account PgsqlStateProgress,
+            // for cases like SSL handshake (might be the only one, but not sure yet)
             match parser::pgsql_parse_response(start) {
                 Ok((rem, response)) => {
                     start = rem;
                     SCLogNotice!("Found a response.");
                     SCLogNotice!("- Response: {:?}", &response);
                     let message_type = response.get_message_type();
-                    let be_key_pid = response.get_backendkey_info().0;
-                    let be_secret_key = response.get_backendkey_info().1;
-                    // TODO we must also match on response type, so we can change state...
-                    // match on backend_secrete_key - store info
-                    // ready for query -- change state to ready for query received
+                    // We must also match on response type, so we can change state...
                     match message_type {
-                        15 => {
-                            self.backend_pid = be_key_pid;
-                            self.backend_secrete_key = be_secret_key;
+                        "SslAccepted" => { // SSL Response
+                            self.state_progress = PgsqlStateProgress::SSLRequestReceived;
+                            // TODO we must upgrade to TLS here.
                         }
-                        16 => {
+                        "BackendKeyData" => { // BackendKeyDataMessage
+                            self.backend_pid = response.get_backendkey_info().0;
+                            self.backend_secrete_key = response.get_backendkey_info().1;
+                        }
+                        "ReadyForQuery" => { // ReadyForQueryMessage
                             self.state_progress = PgsqlStateProgress::ReadyForQueryReceived;
                         }
+                        // TODO Question find out if we should store any of the Parameter Statuses in the State.
                         _ => {}
                     }
+                    // Handle the tx here to avoid borrow checker issues
                     let mut tx = self.find_or_create_tx();
                     tx.response.push(response);
                 }
