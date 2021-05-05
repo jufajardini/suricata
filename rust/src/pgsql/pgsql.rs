@@ -51,8 +51,8 @@ pub enum PgsqlTransactionState { // a simplified version of this, stored in Stat
 pub struct PgsqlTransaction {
     tx_id: u64,
     pub state: PgsqlTransactionState,
-    pub request: Vec<PgsqlFEMessage>,
-    pub response: Vec<PgsqlBEMessage>,
+    pub requests: Vec<PgsqlFEMessage>,
+    pub responses: Vec<PgsqlBEMessage>,
 
     de_state: Option<*mut core::DetectEngineState>,
     events: *mut core::AppLayerDecoderEvents,
@@ -64,8 +64,8 @@ impl PgsqlTransaction {
         PgsqlTransaction {
             tx_id: 0,
             state: PgsqlTransactionState::ConnectionStart, // TODO question is this the best initialization value?
-            request: Vec::<PgsqlFEMessage>::new(),
-            response: Vec::<PgsqlBEMessage>::new(),
+            requests: Vec::<PgsqlFEMessage>::new(),
+            responses: Vec::<PgsqlBEMessage>::new(),
             de_state: None,
             events: std::ptr::null_mut(),
             tx_data: AppLayerTxData::new(),
@@ -90,11 +90,12 @@ impl Drop for PgsqlTransaction {
 #[derive(Debug, PartialEq)]
 pub enum PgsqlStateProgress {
     IdleState = 0,
-    SSLRequestReceived,
+    SslRequestReceived,
     StartupMessageReceived,
     SASLAuthenticationReceived,
     SASLInitialResponseReceived,
-    SSLAcceptedReceived,
+    SslAcceptedReceived,
+    SimpleAuthenticationReceived,
     PasswordMessageReceived,
     ConnectionCompleted,
     ReadyForQueryReceived,
@@ -198,54 +199,144 @@ impl PgsqlState {
         while start.len() > 0 {
 
             // TODO rewrite this, in light of PgsqlStateProgress
-            // if PgsqlStateProgress is Idle and transactions is empty, parse startup messages/packets
-            // if PgsqlStateProgress is AuthenticationSASL, parse SASL initial response
-            // if PgsqlStateProgress is AuthenticationSASLContinue, parse SASL response
             // if PgsqlStateProgress is AuthenticationGSS, parse GSS response -> TODO decide if we should offer support for it in the first version
             // if PgsqlStateProgress is AuthenticationSSPI, parse SSPI response -> make sure I have the proper nom parser
             // if PgsqlStateProgress is ReadyForQueryReceived, parse a query...
-
-            match parser::pgsql_parse_request(start) {
-                Ok((rem, request)) => {
-                    start = rem;
-
-                    SCLogNotice!("Request: {:?}", request);
-                    // TODO I can't simply create a new transaction without being sure that's what I need.
-                    // if we're in the middle of a transaction, I certainly will not create a new one.
-                    // let mut tx = self.new_tx();
-                    let mut tx = self.find_or_create_tx();
-                    match request {
-                        PgsqlFEMessage::SslRequest(_) => {
-                            tx.request.push(request);
-                            self.state_progress = PgsqlStateProgress::SSLRequestReceived;
-                            // self.transactions.push(tx); // TODO question: This is now done in find_or_create_tx. Is that bad practice?
+            match self.state_progress {
+                PgsqlStateProgress::IdleState  => {
+                    match parser::pgsql_parse_startup_packet(start) {
+                        // TODO should I also add "&& self.transactions.is_empty()"
+                        Ok((rem, request)) => {
+                            start =rem;
+                            SCLogNotice!("Request: {:?}", request);
+                            let mut tx = self.find_or_create_tx();
+                            match request {
+                                PgsqlFEMessage::SslRequest(_) => {
+                                    tx.requests.push(request);
+                                    self.state_progress = PgsqlStateProgress::SslRequestReceived;
+                                },
+                                PgsqlFEMessage::StartupMessage(_) => {
+                                    tx.requests.push(request);
+                                    self.state_progress = PgsqlStateProgress::StartupMessageReceived;
+                                },
+                                _ =>{
+                                    // TODO when things don't go well, what will I do?
+                                },
+                            }
+                        },
+                        Err(nom::Err::Incomplete(needed)) => {
+                            let consumed = input.len() - start.len();
+                            let needed_estimation = start.len() + 1;
+                            SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+                            return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+                        },
+                        Err(_) => {
+                            return AppLayerResult::err();
+                        },
                         }
-                        PgsqlFEMessage::StartupMessage(_) => {
-                            tx.request.push(request);
-                            self.state_progress = PgsqlStateProgress::StartupMessageReceived;
-                            // self.transactions.push(tx);
+                },
+                PgsqlStateProgress::SASLAuthenticationReceived => {
+                    match parser::parse_sasl_initial_response(start) {
+                        Ok((rem, request)) => {
+                            start = rem;
+                            SCLogNotice!("Request: {:?}", request);
+                            let mut tx = self.find_or_create_tx();
+                            tx.requests.push(request);
                         }
-                        PgsqlFEMessage::PasswordMessage(_) => {
-                            tx.request.push(request);
-                            self.state_progress = PgsqlStateProgress::PasswordMessageReceived;
+                        Err(nom::Err::Incomplete(needed)) => {
+                            let consumed = input.len() - start.len();
+                            let needed_estimation = start.len() + 1;
+                            SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+                            return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
                         }
-                        _ => {}
+                        Err(_) => {
+                            return AppLayerResult::err();
+                        }
                     }
                 },
-                Err(nom::Err::Incomplete(needed)) => {
-                    // Not enough data. This parser doesn't give us a good indication
-                    // of how much data is missing so just ask for one more byte so the
-                    // parse is called as soon as more data is received.
-                    SCLogNotice!("Suricata interprets request as incomplete");
-                    let consumed = input.len() - start.len();
-                    let needed_estimation = start.len() + 1;
-                    SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
-                    return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+                PgsqlStateProgress::SASLInitialResponseReceived => {
+                    match parser::parse_sasl_response(start) {
+                        Ok((rem, request)) => {
+                            start = rem;
+                            SCLogNotice!("Request: {:?}", request);
+                            let mut tx = self.find_or_create_tx();
+                            tx.requests.push(request);
+                        },
+                        Err(nom::Err::Incomplete(needed)) => {
+                            let consumed = input.len() - start.len();
+                            let needed_estimation = start.len() + 1;
+                            SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+                            return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+                        },
+                        Err(_) => {
+                            return AppLayerResult::err();
+                        },
+                    }
                 },
-                Err(_) => {
-                    return AppLayerResult::err();
+                PgsqlStateProgress::SimpleAuthenticationReceived => {
+                    match parser::parse_password_message(start) {
+                        Ok((rem, request)) => {
+                            start = rem;
+                            SCLogNotice!("Request : {:?}", request);
+                            let mut tx = self.find_or_create_tx();
+                            tx.requests.push(request);
+                            self.state_progress = PgsqlStateProgress::PasswordMessageReceived;
+                        },
+                        Err(nom::Err::Incomplete(needed)) => {
+                            let consumed = input.len() - start.len() + 1;
+                            let needed_estimation = start.len() + 1;
+                            SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+                            return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+                        },
+                        Err(_) => {
+                            return AppLayerResult::err();
+                        },
+                    }
                 },
+                _ => {
+                    // TODO handle unexpected situations here
+                }
             }
+
+            // match parser::pgsql_parse_request(start) {
+            //     Ok((rem, request)) => {
+            //         start = rem;
+            //         SCLogNotice!("Request: {:?}", request);
+            //         // TODO I can't simply create a new transaction without being sure that's what I need.
+            //         // if we're in the middle of a transaction, I certainly will not create a new one.
+            //         // let mut tx = self.new_tx();
+            //         let mut tx = self.find_or_create_tx();
+            //         match request {
+            //             PgsqlFEMessage::SslRequest(_) => {
+            //                 tx.requests.push(request);
+            //                 self.state_progress = PgsqlStateProgress::SSLRequestReceived;
+            //             }
+            //             PgsqlFEMessage::StartupMessage(_) => {
+            //                 tx.requests.push(request);
+            //                 self.state_progress = PgsqlStateProgress::StartupMessageReceived;
+            //                 // self.transactions.push(tx);
+            //             }
+            //             PgsqlFEMessage::PasswordMessage(_) => {
+            //                 tx.requests.push(request);
+            //                 self.state_progress = PgsqlStateProgress::PasswordMessageReceived;
+            //             }
+            //             _ => {}
+            //         }
+            //     },
+            //     Err(nom::Err::Incomplete(needed)) => {
+            //         // Not enough data. This parser doesn't give us a good indication
+            //         // of how much data is missing so just ask for one more byte so the
+            //         // parse is called as soon as more data is received.
+            //         SCLogNotice!("Suricata interprets request as incomplete");
+            //         let consumed = input.len() - start.len();
+            //         let needed_estimation = start.len() + 1;
+            //         SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+            //         return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+            //     },
+            //     Err(_) => {
+            //         return AppLayerResult::err();
+            //     },
+            // }
         }
 
         // Input was fully consumed.
@@ -284,7 +375,7 @@ impl PgsqlState {
                     // We must also match on response type, so we can change state...
                     match message_type {
                         "SslAccepted" => { // SSL Response
-                            self.state_progress = PgsqlStateProgress::SSLRequestReceived;
+                            self.state_progress = PgsqlStateProgress::SslRequestReceived;
                             // TODO we must upgrade to TLS here.
                         }
                         "BackendKeyData" => { // BackendKeyDataMessage
@@ -299,7 +390,7 @@ impl PgsqlState {
                     }
                     // Handle the tx here to avoid borrow checker issues
                     let mut tx = self.find_or_create_tx();
-                    tx.response.push(response);
+                    tx.responses.push(response);
                 }
                 Err(nom::Err::Incomplete(needed)) => {
                     let consumed = input.len() - start.len();
@@ -777,7 +868,7 @@ mod test {
         // an SSL Request
         let buf: &[u8] = &[0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x16, 0x2f];
         state.parse_request(buf);
-        let ok_state = PgsqlStateProgress::SSLRequestReceived;
+        let ok_state = PgsqlStateProgress::SslRequestReceived;
 
         assert_eq!(state.state_progress, ok_state);
 

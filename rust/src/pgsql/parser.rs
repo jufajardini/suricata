@@ -445,7 +445,7 @@ named!(parse_sasl_initial_response_payload<(SASLAuthenticationMechanism, u32, Ve
         >> ((sasl_mechanism, param_length, param.to_vec()))
     ));
 
-named!(pgsql_parse_sasl_initial_response<PgsqlFEMessage>,
+named!(pub parse_sasl_initial_response<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'p')
         >> length: verify!(be_u32, |&x| x > 8)
@@ -460,7 +460,7 @@ named!(pgsql_parse_sasl_initial_response<PgsqlFEMessage>,
         }))
     ));
 
-named!(pgsql_parse_sasl_response<PgsqlFEMessage>,
+named!(pub parse_sasl_response<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'p')
         >> length: verify!(be_u32, |&x| x > 4)
@@ -521,7 +521,7 @@ named!(pub pgsql_parse_startup_packet<PgsqlFEMessage>,
 // Source: https://www.postgresql.org/docs/13/protocol-flow.html#id-1.10.5.7.11, GSSAPI Session Encryption
 
 // Password can be encrypted or in cleartext
-named!(pgsql_parse_password_message<PgsqlFEMessage>,
+named!(pub parse_password_message<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'p')
         >> length: verify!(be_u32, |&x| x >= 5) // a magic number to check that we have some data.
@@ -542,7 +542,7 @@ named!(pub pgsql_parse_request<PgsqlFEMessage>,
         tag: peek!(be_u8)
         >> message: switch!(value!(tag),
                         b'\0' => call!(pgsql_parse_startup_packet) | // TODO this will probably be taken away from here.
-                        b'p' =>  call!(pgsql_parse_password_message)
+                        b'p' =>  call!(parse_password_message)
                 )
         >> (message)
     ));
@@ -1577,7 +1577,7 @@ mod tests {
                 sasl_param: br#"n,,n=,r=/z+giZiTxAH7r8sNAeHr7cvp"#.to_vec(),
             });
 
-        let result = pgsql_parse_sasl_initial_response(&buf);
+        let result = parse_sasl_initial_response(&buf);
         match result {
             Ok((remainder, message)) => {
                 assert_eq!(message, ok_res);
@@ -1611,7 +1611,7 @@ mod tests {
                 payload: br#"c=biws,r=/z+giZiTxAH7r8sNAeHr7cvpqV3uo7G/bJBIJO3pjVM7t3ng,p=AFpSYH/K/8bux1mRPUwxTe8lBuIPEyhi/7UFPQpSr4A="#.to_vec(),
             });
 
-        let result = pgsql_parse_sasl_response(&buf);
+        let result = parse_sasl_response(&buf);
         match result {
             Ok((_remainder, message)) => {
                 assert_eq!(message, ok_res);
