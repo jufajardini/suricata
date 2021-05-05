@@ -91,14 +91,17 @@ impl Drop for PgsqlTransaction {
 pub enum PgsqlStateProgress {
     IdleState = 0,
     SslRequestReceived,
+    SslAcceptedReceived,
+    SslRejectedReceived,
     StartupMessageReceived,
     SASLAuthenticationReceived,
     SASLInitialResponseReceived,
-    SslAcceptedReceived,
+    // SSPIAuthenticationReceived, // TODO implement
     SimpleAuthenticationReceived,
     PasswordMessageReceived,
     ConnectionCompleted,
     ReadyForQueryReceived,
+    ErrorMessageReceived,
     UnknownState,
 }
 
@@ -156,6 +159,7 @@ impl PgsqlState {
         let mut tx = PgsqlTransaction::new();
         self.tx_id += 1;
         tx.tx_id = self.tx_id;
+        SCLogNotice!("Creating new transaction. tx_id: {}", tx.tx_id);
         return tx;
     }
 
@@ -293,50 +297,16 @@ impl PgsqlState {
                         },
                     }
                 },
+                // PgsqlStateProgress::SSPIAuthenticationReceived => {
+                //     // TODO implement
+                // },
+                PgsqlStateProgress::ReadyForQueryReceived => {
+                    // TODO parse simple query request
+                },
                 _ => {
                     // TODO handle unexpected situations here
                 }
             }
-
-            // match parser::pgsql_parse_request(start) {
-            //     Ok((rem, request)) => {
-            //         start = rem;
-            //         SCLogNotice!("Request: {:?}", request);
-            //         // TODO I can't simply create a new transaction without being sure that's what I need.
-            //         // if we're in the middle of a transaction, I certainly will not create a new one.
-            //         // let mut tx = self.new_tx();
-            //         let mut tx = self.find_or_create_tx();
-            //         match request {
-            //             PgsqlFEMessage::SslRequest(_) => {
-            //                 tx.requests.push(request);
-            //                 self.state_progress = PgsqlStateProgress::SSLRequestReceived;
-            //             }
-            //             PgsqlFEMessage::StartupMessage(_) => {
-            //                 tx.requests.push(request);
-            //                 self.state_progress = PgsqlStateProgress::StartupMessageReceived;
-            //                 // self.transactions.push(tx);
-            //             }
-            //             PgsqlFEMessage::PasswordMessage(_) => {
-            //                 tx.requests.push(request);
-            //                 self.state_progress = PgsqlStateProgress::PasswordMessageReceived;
-            //             }
-            //             _ => {}
-            //         }
-            //     },
-            //     Err(nom::Err::Incomplete(needed)) => {
-            //         // Not enough data. This parser doesn't give us a good indication
-            //         // of how much data is missing so just ask for one more byte so the
-            //         // parse is called as soon as more data is received.
-            //         SCLogNotice!("Suricata interprets request as incomplete");
-            //         let consumed = input.len() - start.len();
-            //         let needed_estimation = start.len() + 1;
-            //         SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
-            //         return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
-            //     },
-            //     Err(_) => {
-            //         return AppLayerResult::err();
-            //     },
-            // }
         }
 
         // Input was fully consumed.
@@ -362,10 +332,52 @@ impl PgsqlState {
             // state and keep parsing.
             self.response_gap = false;
         }
+
+        // what changes must be done here?
+        // first of them: if SSL was requested, parse ssl response
+        // then, if ssl response is "accepted", upgrade to TLS
+        // if not, I guess we can simply go on and parse the responses.
+        // I think that for most, if not for all of them, just the message should be enough to know how to parse the msg
+
         let mut start = input;
         while start.len() > 0 {
             // TODO this must be revamped, to take into account PgsqlStateProgress,
             // for cases like SSL handshake (might be the only one, but not sure yet)
+            if self.state_progress == PgsqlStateProgress::SslRequestReceived {
+                match parser::parse_ssl_response(start) {
+                    Ok((rem, response)) => {
+                        start = rem;
+                        SCLogNotice!("SSL Response received");
+                        SCLogNotice!("Response: {:?}", &response);
+                        let message_type = response.get_message_type();
+                        if message_type == "SslAccepted" {
+                            self.state_progress = PgsqlStateProgress::SslRequestReceived;
+                            // TODO do we upgrade to TLS here, or leave that for elsewhere?
+                        } else if message_type == "SslRejected" {
+                            self.state_progress = PgsqlStateProgress::SslRejectedReceived;
+                            // TODO not sure if something else should be done here it may be the case that this tx
+                        } else {
+                            // TODO what should I do if I get an invalid message here? AppLayerResult error?
+                        }
+                    },
+                    Err(nom::Err::Incomplete(needed)) => {
+                        let consumed = input.len() - start.len();
+                        let needed_estimation = start.len() + 1;
+                        SCLogNotice!("Suricata interprets the response as incomplete");
+                        SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
+                        SCLogNotice!("start is: {:?}", &start);
+                        return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
+                    },
+                    Err(nom::error::ErrorKind::Verify) => {
+                        // We want to know if we got an ErrorMessage here
+                        SCLogNotice!("Nom error while parsing SSL Response");
+                        // TODO I think we want to parse the error message
+                        self.state_progress = PgsqlStateProgress::ErrorMessageReceived;
+                    },
+
+                }
+
+            }
             match parser::pgsql_parse_response(start) {
                 Ok((rem, response)) => {
                     start = rem;

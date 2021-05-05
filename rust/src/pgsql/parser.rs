@@ -638,7 +638,7 @@ named!(parse_parameter_status_message<PgsqlBEMessage>,
 // TODO This will need thinking and refactoring.
 // I believe it must be called from elsewhere, not from
 // parse_response, for that one already has other messages with the same identifier, so handling these two via events or smth, from pgsql.rs might work better
-named!(pgsql_parse_ssl_response<PgsqlBEMessage>,
+named!(pub parse_ssl_response<PgsqlBEMessage>,
     do_parse!(
         tag: alt!(char!('N') | char!('S'))
         >> (PgsqlBEMessage::SslResponse(
@@ -1627,19 +1627,19 @@ mod tests {
         // An SSL response - N
         let buf: &[u8] = &[0x4e];
         let response_ok = PgsqlBEMessage::SslResponse(SslResponse::SslRejected);
-        let (_remainder, result) = pgsql_parse_ssl_response(&buf).unwrap();
+        let (_remainder, result) = parse_ssl_response(&buf).unwrap();
         assert_eq!(result, response_ok);
 
         // An SSL response - S
         let buf: &[u8] = &[0x53];
         let response_ok = PgsqlBEMessage::SslResponse(SslResponse::SslAccepted);
 
-        let (_remainder, result) = pgsql_parse_ssl_response(&buf).unwrap();
+        let (_remainder, result) = parse_ssl_response(&buf).unwrap();
         assert_eq!(result, response_ok);
 
         // Not an SSL response
         let buf: &[u8] = &[0x52];
-        let result = pgsql_parse_ssl_response(&buf);
+        let result = parse_ssl_response(&buf);
         assert!(result.is_err());
 
         // - auth MD5
