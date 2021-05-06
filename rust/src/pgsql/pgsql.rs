@@ -368,15 +368,16 @@ impl PgsqlState {
                         SCLogNotice!("start is: {:?}", &start);
                         return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
                     },
-                    Err(nom::error::ErrorKind::Verify) => {
+                    Err(nom::Err::Error((rem, nom::error::ErrorKind::Verify))) => {
                         // We want to know if we got an ErrorMessage here
-                        SCLogNotice!("Nom error while parsing SSL Response");
+                        SCLogNotice!("Nom error while parsing SSL Response. Unparsed input: {:?}", rem);
                         // TODO I think we want to parse the error message
                         self.state_progress = PgsqlStateProgress::ErrorMessageReceived;
                     },
-
+                    _ => {
+                        return AppLayerResult::err();
+                    }
                 }
-
             }
             match parser::pgsql_parse_response(start) {
                 Ok((rem, response)) => {
@@ -457,6 +458,7 @@ impl PgsqlState {
 /// PGSQL messages don't have a header per se, so we parse the slice for an ok()
 fn probe_ts(input: &[u8]) -> bool {
     // TODO would it be useful to add a is_valid function?
+    SCLogNotice!("We are in probe_ts");
     parser::pgsql_parse_request(input).is_ok()
 }
 
@@ -464,6 +466,7 @@ fn probe_ts(input: &[u8]) -> bool {
 ///
 /// PGSQL messages don't have a header per se, so we parse the slice for an ok()
 fn probe_tc(input: &[u8]) -> bool {
+    SCLogNotice!("We are in probe_tc");
     parser::pgsql_parse_response(input).is_ok()
 }
 
