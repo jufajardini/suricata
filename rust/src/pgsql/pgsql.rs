@@ -292,9 +292,14 @@ impl PgsqlState {
                             SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
                             return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
                         },
-                        Err(_) => {
+                        Err(e) => {
+                            SCLogNotice!("ERROR in parse_request: {:?}", e);
                             return AppLayerResult::err();
                         },
+                        // _ => {
+                        //     SCLogNotice!("ERROR in parse_request, SimpleAuthenticationReceived, unexpected case");
+                        //     return AppLayerResult::err();
+                        // }
                     }
                 },
                 // PgsqlStateProgress::SSPIAuthenticationReceived => {
@@ -305,6 +310,8 @@ impl PgsqlState {
                 },
                 _ => {
                     // TODO handle unexpected situations here
+                    SCLogNotice!("ERROR in parse_request, all unexpected cases");
+                    return AppLayerResult::err();
                 }
             }
         }
