@@ -123,35 +123,6 @@ impl From<char> for SslResponse {
     }
 }
 
-// #[derive(Debug, PartialEq)]
-// pub enum PgsqlBEMessage {
-//     SslResponse(PgsqlSslResponse), // BE message
-//     PasswordMessage(PgsqlRegularPacket), // FE message
-//     AuthenticationGSS(PgsqlAuthenticationMessage), // BE Message
-//     AuthenticationGSSContinue(PgsqlAuthenticationMessage), // BE Message
-//     AuthenticationMD5Password(PgsqlAuthenticationMessage), // BE message
-//     AuthenticationCleartextPassword(PgsqlAuthenticationMessage), // BE message
-//     AuthenticationSSPI(PgsqlAuthenticationMessage), // BE Message
-//     AuthenticationSASL(AuthenticationSASLMechanismMessage), // BE Message
-//     AuthenticationSASLContinue(PgsqlAuthenticationMessage), // BE Message
-//     AuthenticationSASLFinal(PgsqlAuthenticationMessage), // BE Message
-//     AuthenticationOk(PgsqlAuthenticationMessage), // BE message
-//     ErrorResponse(PgsqlErrorNoticeResponse), // BE message
-//     NoticeResponse(PgsqlErrorNoticeResponse), // BE message
-//     SASLInitialResponse(SASLInitialResponsePacket), // FE message
-//     SASLResponse(PgsqlRegularPacket), // FE Message
-//     ParameterStatus(ParameterStatusMessage), // BE message
-//     BackendKeyData(BackendKeyDataMessage), // BE message
-//     ReadyForQuery(ReadyForQueryMessage), // BE message
-// }
-
-// #[derive(Debug, PartialEq)]
-// pub struct AuthenticationRequest {
-//     length: u32,
-//     auth_type: u32,
-//     payload: Option<Vec<u8>>,
-// }
-
 #[derive(Debug, PartialEq)]
 pub struct ParameterStatusMessage {
     identifier: u8,
@@ -250,6 +221,7 @@ pub enum PgsqlFEMessage {
     PasswordMessage(RegularPacket),
     SASLInitialResponse(SASLInitialResponsePacket),
     SASLResponse(RegularPacket),
+    SimpleQuery(RegularPacket),
 }
 
 impl fmt::Display for PgsqlFEMessage {
@@ -258,18 +230,6 @@ impl fmt::Display for PgsqlFEMessage {
     }
 }
 
-impl PgsqlFEMessage {
-    pub fn is_ssl_request(&self) -> bool {
-        match self {
-            Self::SslRequest(DummyStartupPacket {
-                length: 8,
-                proto_major: PGSQL_DUMMY_PROTO_MAJOR,
-                proto_minor: PGSQL_DUMMY_PROTO_MINOR_SSL,
-            }) => true,
-            _ => false,
-        }
-    }
-}
 #[derive(Debug, PartialEq)]
 pub struct AuthenticationMessage {
     identifier: u8,
@@ -293,6 +253,28 @@ pub struct AuthenticationSASLMechanismMessage {
     length: u32,
     auth_type: u32,
     auth_mechanisms: Vec<SASLAuthenticationMechanism>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RowField {
+    name: Vec<u8>,
+    table_obj_id: u32,
+    table_attr_num: u16,
+    data_type_obj_id: u32,
+    // "Note that negative values denote variable-width types"
+    data_type_size: i16,
+    // "The value will generally be -1 for types that do not need atttypmod."
+    type_modifier: i32,
+    // "The format code being used for the field. Currently will be zero (text) or one (binary)."
+    format_code: u16,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct RowDescription {
+    identifier: u8,
+    length: u32,
+    fields_num: u16,
+    fields: Option<RowField>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -522,15 +504,29 @@ named!(pub parse_password_message<PgsqlFEMessage>,
             }))
     ));
 
+named!(parse_simple_query<PgsqlFEMessage>,
+    do_parse!(
+        identifier: verify!(be_u8, |&x| x == b'Q')
+        >> length: verify!(be_u32, |&x| x > 4)
+        >> query: flat_map!(take!(length -4), take_until1!("\x00"))
+        >> (PgsqlFEMessage::SimpleQuery(
+            RegularPacket {
+                identifier,
+                length,
+                payload: query.to_vec(),
+            }))
+    ));
+
 // TODO messages that begin with 'p' but are not password ones are not parsed (yet) here
 // we may need to bring some context logic to pgsql.rs, as content interpretation
 // of such messages is context (transaction, I believe) dependent
-named!(pub pgsql_parse_request<PgsqlFEMessage>,
+named!(pub parse_request<PgsqlFEMessage>,
     do_parse!(
         tag: peek!(be_u8)
         >> message: switch!(value!(tag),
                         b'\0' => call!(pgsql_parse_startup_packet) | // TODO this will probably be taken away from here.
-                        b'p' =>  call!(parse_password_message)
+                        // b'p' =>  call!(parse_password_message) - this shall be called per case, from pgsql.rs
+                        b'Q' => dbg_dmp!(call!(parse_simple_query))
                 )
         >> (message)
     ));
@@ -806,16 +802,16 @@ mod tests {
         };
         let request_ok = PgsqlFEMessage::SslRequest(ssl_request);
 
-        let (_remainder, result) = pgsql_parse_request(&buf).unwrap();
+        let (_remainder, result) = parse_request(&buf).unwrap();
         assert_eq!(result, request_ok);
 
         // incomplete message
-        let result = pgsql_parse_request(&buf[0..7]);
+        let result = parse_request(&buf[0..7]);
         assert!(result.is_err());
 
         // Length is wrong
         let buf: &[u8] = &[0x00, 0x00, 0x00, 0x07, 0x04, 0xd2, 0x16, 0x2f];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         let buf: &[u8] = &[
@@ -833,7 +829,7 @@ mod tests {
                             0x77, 0x61, 0x6c, 0x72, 0x65, 0x63, 0x65, 0x69,
                             0x76, 0x65, 0x72, 0x00, 0x00
           ];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         match result {
             Ok((remainder, _message)) => {
                 // there should be nothing left
@@ -877,7 +873,7 @@ mod tests {
                     proto_minor: 0,
                     params,
         });
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         match result {
             Ok((remainder, message)) => {
                 assert_eq!(message, expected_result);
@@ -915,7 +911,7 @@ mod tests {
                     proto_minor: 0,
                     params,
                 });
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         match result {
             Ok((remainder, message)) => {
                 assert_eq!(message, expected_result);
@@ -937,7 +933,7 @@ mod tests {
                             0x00, 0x03, 0x00, 0x00,
                             0x75, 0x73, 0x65, 0x72, 0x00,
                             0x6f, 0x72, 0x79, 0x78, 0x00, 0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // A startup message/request with bad length
@@ -945,7 +941,7 @@ mod tests {
                             0x00, 0x03, 0x00, 0x00,
                             0x75, 0x73, 0x65, 0x72, 0x00,
                             0x6f, 0x72, 0x79, 0x78, 0x00, 0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // A startup message/request with corrupted user param
@@ -953,7 +949,7 @@ mod tests {
                             0x00, 0x03, 0x00, 0x00,
                             0x75, 0x73, 0x65, 0x00,
                             0x6f, 0x72, 0x79, 0x78, 0x00, 0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // A startup message/request missing the terminator
@@ -961,7 +957,7 @@ mod tests {
                             0x00, 0x03, 0x00, 0x00,
                             0x75, 0x73, 0x65, 0x72, 0x00,
                             0x6f, 0x72, 0x79, 0x78, 0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // A password message (MD5)
@@ -977,7 +973,7 @@ mod tests {
                     length: 40,
                     payload: br#"md5ceffc01dcde7541829deef6b5e9c9142"#.to_vec(),
                 });
-        let (_remainder, result) = pgsql_parse_request(&buf).unwrap();
+        let (_remainder, result) = parse_request(&buf).unwrap();
         assert_eq!(result, ok_result);
 
         // Length is off by one here
@@ -987,7 +983,7 @@ mod tests {
                             0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
                             0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
                             0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // Length also off by one, but now bigger than it should
@@ -997,7 +993,7 @@ mod tests {
                             0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
                             0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
                             0x00];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // Incomplete payload
@@ -1006,7 +1002,7 @@ mod tests {
                             0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
                             0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
                             0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32];
-        let result = pgsql_parse_request(&buf);
+        let result = parse_request(&buf);
         assert!(result.is_err());
 
         // TODO add other messages
