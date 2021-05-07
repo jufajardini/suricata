@@ -296,18 +296,6 @@ pub struct AuthenticationSASLMechanismMessage {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct PgsqlRequestMessage {
-    pub message_type: PgsqlBEMessage,
-    // TODO I'm not sure whether length should be in the other structures, or here
-}
-
-impl fmt::Display for PgsqlRequestMessage {
-    fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[derive(Debug, PartialEq)]
 pub enum PgsqlErrorNoticeFieldTypes {
     SeverityLocalizable,
     SeverityNonLocalizable,
