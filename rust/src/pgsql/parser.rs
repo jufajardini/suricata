@@ -19,6 +19,7 @@ use std::{fmt};
 use nom::combinator::rest;
 use nom::character::streaming::alphanumeric1;
 use nom::number::streaming::{be_u8, be_u16, be_u32};
+use nom::number::streaming::{be_i16, be_i32};
 
 pub const PGSQL_DUMMY_PROTO_MAJOR: u16 = 1234; // 0x04d2
 pub const PGSQL_DUMMY_PROTO_MINOR_SSL: u16 = 5679; //0x162f
@@ -163,9 +164,8 @@ pub enum PgsqlBEMessage {
     ParameterStatus(ParameterStatusMessage),
     BackendKeyData(BackendKeyDataMessage),
     ReadyForQuery(ReadyForQueryMessage),
+    RowDescription(RowDescription),
 }
-
-
 
 impl fmt::Display for PgsqlBEMessage {
     fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
@@ -193,6 +193,7 @@ impl PgsqlBEMessage {
             PgsqlBEMessage::ParameterStatus(_) => "ParameterStatus",
             PgsqlBEMessage::BackendKeyData(_) => "BackendKeyData",
             PgsqlBEMessage::ReadyForQuery(_) => "ReadyForQuery",
+            PgsqlBEMessage::RowDescription(_) => "RowDescription",
             PgsqlBEMessage::SslResponse(SslResponse::InvalidResponse) => "InvalidBEMessage",
         }
     }
@@ -201,7 +202,7 @@ impl PgsqlBEMessage {
         match self {
             PgsqlBEMessage::BackendKeyData(message) => {
                 return (message.backend_pid, message.secret_key);
-            }
+            },
             _ => (0, 0)
         }
     }
@@ -257,24 +258,25 @@ pub struct AuthenticationSASLMechanismMessage {
 
 #[derive(Debug, PartialEq)]
 pub struct RowField {
-    name: Vec<u8>,
-    table_obj_id: u32,
-    table_attr_num: u16,
-    data_type_obj_id: u32,
+    field_name: Vec<u8>,
+    table_oid: u32,
+    column_index: u16,
+    data_type_oid: u32,
     // "Note that negative values denote variable-width types"
     data_type_size: i16,
     // "The value will generally be -1 for types that do not need atttypmod."
     type_modifier: i32,
-    // "The format code being used for the field. Currently will be zero (text) or one (binary)."
+    // "The format code being used for the field. Currently will be zero (text) or one (binary). In a RowDescription returned from the variant of Describe, will always be zero"
     format_code: u16,
 }
 
+// TODO should I have a constructor here?
 #[derive(Debug, PartialEq)]
 pub struct RowDescription {
     identifier: u8,
     length: u32,
-    fields_num: u16,
-    fields: Option<RowField>,
+    field_count: u16,
+    fields: Vec<RowField>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -355,6 +357,7 @@ impl From<u8> for PgsqlErrorNoticeFieldTypes {
     }
 }
 
+// TODO change this, make sure \x00 is included in the vectors
 named!(parse_user_param<PgsqlParameter>,
     do_parse!(
         param_name: tag_no_case!("user")
@@ -367,6 +370,7 @@ named!(parse_user_param<PgsqlParameter>,
             })
     ));
 
+// TODO change this, make sure \x00 is included in the vectors
 named!(parse_database_param<PgsqlParameter>,
     do_parse!(
         param_name: tag_no_case!("database")
@@ -381,6 +385,7 @@ named!(parse_database_param<PgsqlParameter>,
 
 //TODO shall I create a generic parser for the parameters, which receives tag as an argument?
 // using named_args....
+// TODO change this, make sure \x00 is included in the vectors
 named!(pgsql_parse_parameter<PgsqlParameter>,
     do_parse!(
         param_name: take_until1!("\x00")
@@ -397,6 +402,7 @@ named!(pub pgsql_parse_startup_parameters<PgsqlStartupParameters>,
     do_parse!(
         user: call!(parse_user_param)
         >> database: opt!(parse_database_param)
+        // TODO change this, make sure \x00 is included in the vectors
         >> optional: opt!(terminated!(many1!(pgsql_parse_parameter), tag!("\x00")))
         >> (PgsqlStartupParameters{
                 user,
@@ -495,6 +501,7 @@ named!(pub parse_password_message<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'p')
         >> length: verify!(be_u32, |&x| x >= 5) // a magic number to check that we have some data.
+        // TODO change this, make sure \x00 is included in the vector
         >> password: flat_map!(take!(length - 4), take_until1!("\x00"))
         >> (PgsqlFEMessage::PasswordMessage(
                     RegularPacket{
@@ -508,7 +515,8 @@ named!(parse_simple_query<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'Q')
         >> length: verify!(be_u32, |&x| x > 4)
-        >> query: flat_map!(take!(length -4), take_until1!("\x00"))
+        // TODO change this, make sure \x00 is included in the vector
+        >> query: flat_map!(take!(length - 4), take_until1!("\x00"))
         >> (PgsqlFEMessage::SimpleQuery(
             RegularPacket {
                 identifier,
@@ -658,12 +666,49 @@ named!(parse_ready_for_query<PgsqlBEMessage>,
             }))
     ));
 
+named!(parse_row_field<RowField>,
+    do_parse!(
+        field_name: take_until1!("\x00")
+        >> tag!("\x00")
+        >> table_oid: be_u32
+        >> column_index: be_u16
+        >> data_type_oid: be_u32
+        >> data_type_size: be_i16
+        >> type_modifier: be_i32
+        >> format_code: be_u16
+        >> (RowField {
+            field_name: field_name.to_vec(),
+            table_oid,
+            column_index,
+            data_type_oid,
+            data_type_size,
+            type_modifier,
+            format_code,
+        })
+    ));
+
+named!(pub parse_row_description<PgsqlBEMessage>,
+    do_parse!(
+        identifier: dbg_dmp!(verify!(be_u8, |&x| x == b'T'))
+        >> length: verify!(be_u32, |&x| x >= 4)
+        >> field_count: dbg_dmp!(be_u16)
+        >> fields: dbg_dmp!(terminated!(many1!(parse_row_field), tag!("\x00")))
+        >> (PgsqlBEMessage::RowDescription(
+            RowDescription {
+                identifier,
+                length,
+                field_count,
+                fields,
+        }))
+    ));
+
 // TODO - Question - although this works with the unittests, if I run the tests w/
 // dbg_dmp I can see that there are errors for the tag!("\x00") cases.
 // I haven't managed to make things work with other structures, though.
 // are these errors an issue?
 named!(parse_sasl_mechanism<SASLAuthenticationMechanism>,
     do_parse!(
+        // TODO change this, make sure \x00 is included in the vectors
         mechanism: alt!(
             terminated!(tag!("SCRAM-SHA-256-PLUS"), tag!("\x00")) => { |_| SASLAuthenticationMechanism::ScramSha256Plus} |
             terminated!(tag!("SCRAM-SHA-256"), tag!("\x00")) => { |_| SASLAuthenticationMechanism::ScramSha256}
@@ -671,6 +716,7 @@ named!(parse_sasl_mechanism<SASLAuthenticationMechanism>,
         >> (mechanism)
     ));
 
+// TODO change this, make sure \x00 is included in the vectors
 named!(parse_sasl_mechanisms<Vec<SASLAuthenticationMechanism>>,
     terminated!(many1!(parse_sasl_mechanism), tag!("\x00")));
 
@@ -691,6 +737,7 @@ named!(pub parse_error_response_severity<PgsqlErrorNoticeMessageField>,
     do_parse!(
         field_type: char!('V')
         >> field_value: alt!(tag!("ERROR") | tag!("FATAL") | tag!("PANIC"))
+        // TODO change this, make sure \x00 is included in the vectors
         >> tag!("\x00")
         >> (PgsqlErrorNoticeMessageField{
                 field_type: PgsqlErrorNoticeFieldTypes::from(field_type),
@@ -714,6 +761,7 @@ named!(pub parse_error_response_field<PgsqlErrorNoticeMessageField>,
         b'W' | b's' | b't' | b'c' | b'd' | b'n' | b'F' | b'L' | b'R'
         => do_parse!(
             field_type: be_u8
+            // TODO change this, make sure \x00 is included in the vectors
             >> field_value: take_until1!("\x00")
             >> tag!("\x00")
             >> (PgsqlErrorNoticeMessageField{
@@ -723,6 +771,7 @@ named!(pub parse_error_response_field<PgsqlErrorNoticeMessageField>,
         ) |
         _ => do_parse!(
             field_type: be_u8
+            // TODO change this, make sure \x00 is included in the vectors
             >> field_value: opt!(take_until1!("\x00"))
             >> tag!("\x00")
             >> (PgsqlErrorNoticeMessageField{
@@ -960,50 +1009,6 @@ mod tests {
         let result = parse_request(&buf);
         assert!(result.is_err());
 
-        // A password message (MD5)
-        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x28, 0x6d, 0x64, 0x35,
-                            0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
-                            0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
-                            0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
-                            0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
-                            0x00];
-        let ok_result = PgsqlFEMessage::PasswordMessage(
-                RegularPacket {
-                    identifier: b'p',
-                    length: 40,
-                    payload: br#"md5ceffc01dcde7541829deef6b5e9c9142"#.to_vec(),
-                });
-        let (_remainder, result) = parse_request(&buf).unwrap();
-        assert_eq!(result, ok_result);
-
-        // Length is off by one here
-        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x27, 0x6d, 0x64, 0x35,
-                            0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
-                            0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
-                            0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
-                            0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
-                            0x00];
-        let result = parse_request(&buf);
-        assert!(result.is_err());
-
-        // Length also off by one, but now bigger than it should
-        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x29, 0x6d, 0x64, 0x35,
-                            0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
-                            0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
-                            0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
-                            0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
-                            0x00];
-        let result = parse_request(&buf);
-        assert!(result.is_err());
-
-        // Incomplete payload
-        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x28, 0x6d, 0x64, 0x35,
-                            0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
-                            0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
-                            0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
-                            0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32];
-        let result = parse_request(&buf);
-        assert!(result.is_err());
 
         // TODO add other messages
 
@@ -1025,6 +1030,54 @@ mod tests {
         assert_eq!(remainder.len(), 0);
 
         let result = parse_error_response_code(&buf[0..5]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_password_messages() {
+        // A password message (MD5)
+        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x28, 0x6d, 0x64, 0x35,
+        0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
+        0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
+        0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
+        0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
+        0x00];
+        let ok_result = PgsqlFEMessage::PasswordMessage(
+        RegularPacket {
+        identifier: b'p',
+        length: 40,
+        payload: br#"md5ceffc01dcde7541829deef6b5e9c9142"#.to_vec(),
+        });
+        let (_remainder, result) = parse_password_message(&buf).unwrap();
+        assert_eq!(result, ok_result);
+
+        // Length is off by one here
+        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x27, 0x6d, 0x64, 0x35,
+        0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
+        0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
+        0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
+        0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
+        0x00];
+        let result = parse_password_message(&buf);
+        assert!(result.is_err());
+
+        // Length also off by one, but now bigger than it should
+        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x29, 0x6d, 0x64, 0x35,
+        0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
+        0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
+        0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
+        0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
+        0x00];
+        let result = parse_password_message(&buf);
+        assert!(result.is_err());
+
+        // Incomplete payload
+        let buf: &[u8] = &[ 0x70, 0x00, 0x00, 0x00, 0x28, 0x6d, 0x64, 0x35,
+        0x63, 0x65, 0x66, 0x66, 0x63, 0x30, 0x31, 0x64,
+        0x63, 0x64, 0x65, 0x37, 0x35, 0x34, 0x31, 0x38,
+        0x32, 0x39, 0x64, 0x65, 0x65, 0x66, 0x36, 0x62,
+        0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32];
+        let result = parse_password_message(&buf);
         assert!(result.is_err());
     }
 
@@ -1520,26 +1573,6 @@ mod tests {
         }
     }
 
-    // Test messages with fixed formats, like AuthenticationSSPI
-    #[test]
-    fn test_parse_simple_authentication_requests() {
-        let buf: &[u8] = &[
-        /* R */             0x52,
-        /* 8 */             0x00, 0x00, 0x00, 0x08,
-        /* 9 */             0x00, 0x00, 0x00, 0x09];
-
-        let ok_res = PgsqlBEMessage::AuthenticationSSPI(
-                AuthenticationMessage {
-                    identifier: b'R',
-                    length: 8,
-                    auth_type: 9,
-                    payload: None,
-                });
-
-        let (_remainder, result) = pgsql_parse_response(&buf).unwrap();
-        assert_eq!(result, ok_res);
-    }
-
     #[test]
     fn test_parse_sasl_frontend_messages() {
         // SASL Initial Response (as seen in https://blog.hackeriet.no/Better-password-hashing-in-PostgreSQL/)
@@ -1604,6 +1637,26 @@ mod tests {
             Err(nom::Err::Incomplete(needed)) => panic!("Shouldn't be incomplete: {:?}, expected Ok(_)", needed),
             _ => panic!("Unexpected behavior, should be Ok(_)"),
         }
+    }
+
+    // Test messages with fixed formats, like AuthenticationSSPI
+    #[test]
+    fn test_parse_simple_authentication_requests() {
+        let buf: &[u8] = &[
+        /* R */             0x52,
+        /* 8 */             0x00, 0x00, 0x00, 0x08,
+        /* 9 */             0x00, 0x00, 0x00, 0x09];
+
+        let ok_res = PgsqlBEMessage::AuthenticationSSPI(
+                AuthenticationMessage {
+                    identifier: b'R',
+                    length: 8,
+                    auth_type: 9,
+                    payload: None,
+                });
+
+        let (_remainder, result) = pgsql_parse_response(&buf).unwrap();
+        assert_eq!(result, ok_res);
     }
 
     #[test]
@@ -1719,5 +1772,101 @@ mod tests {
         }
 
         // TODO keep adding more messages
+    }
+
+    #[test]
+    fn test_parse_row_description() {
+        // RowDescription message
+        // T  ..
+        // source   @  .   .......  version   @  .   .......  sid   @  .   . .....
+        let buffer: &[u8] = &[  0x54,
+                                0x00, 0x00, 0x00, 0x50,
+                                0x00, 0x03,
+                                0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x00,
+                                0x00, 0x00, 0x40, 0x09,
+                                0x00, 0x01,
+                                0x00, 0x00, 0x00, 0x19,
+                                0xff, 0xff,
+                                0xff, 0xff, 0xff, 0xff,
+                                0x00, 0x00,
+                                0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x00,
+                                0x00, 0x00, 0x40, 0x09,
+                                0x00, 0x02,
+                                0x00, 0x00, 0x00, 0x19,
+                                0xff, 0xff,
+                                0xff, 0xff, 0xff, 0xff,
+                                0x00, 0x00,
+                                0x73, 0x69, 0x64, 0x00,
+                                0x00, 0x00, 0x40, 0x09,
+                                0x00, 0x03,
+                                0x00, 0x00, 0x00, 0x14,
+                                0x00, 0x08, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
+                                0x00];
+
+        let field1 = RowField {
+            field_name: br#"source"#.to_vec(),
+            table_oid: 16393,
+            column_index: 1,
+            data_type_oid: 25,
+            data_type_size: -1,
+            type_modifier: -1,
+            format_code: 0,
+        };
+
+        let field2 = RowField {
+            field_name: br#"version"#.to_vec(),
+            table_oid: 16393,
+            column_index: 2,
+            data_type_oid: 25,
+            data_type_size: -1,
+            type_modifier: -1,
+            format_code: 0,
+        };
+
+        let field3 = RowField {
+            field_name: br#"sid"#.to_vec(),
+            table_oid: 16393,
+            column_index: 3,
+            data_type_oid: 20,
+            data_type_size: 8,
+            type_modifier: -1,
+            format_code: 0,
+        };
+
+        let mut fields_vec = Vec::<RowField>::new();
+        fields_vec.push(field1);
+        fields_vec.push(field2);
+        fields_vec.push(field3);
+
+        let ok_res = PgsqlBEMessage::RowDescription(
+            RowDescription {
+                identifier: b'T',
+                length: 80,
+                field_count: 3,
+                fields: fields_vec,
+            });
+
+        // parse a row description message
+        // assert_eq ok_res
+
+        let result = parse_row_description(&buffer);
+        // assert!(result.is_ok());
+
+        match result {
+            Ok((rem, response)) => {
+                assert_eq!(response, ok_res);
+                assert!(rem.is_empty());
+            },
+            Err(nom::Err::Incomplete(needed)) => {
+                panic!("Should not be Incomplete! Needed: {:?}", needed);
+            },
+            Err(nom::Err::Error((rem, err))) => {
+                println!("Remainder is: {:?}", rem);
+                panic!("Shouldn't be error: {:?}", err);
+            },
+            _ => {
+                panic!("Unexpected behavior");
+            }
+        }
     }
 }
