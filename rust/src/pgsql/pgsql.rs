@@ -499,12 +499,14 @@ fn probe_ts(input: &[u8]) -> bool {
 /// Probe for a valid PostgreSQL response
 ///
 /// PGSQL messages don't have a header per se, so we parse the slice for an ok()
+/// Doesn't probe for SSL responses, at the moment
 fn probe_tc(input: &[u8]) -> bool {
     SCLogNotice!("We are in probe_tc");
     if parser::pgsql_parse_response(input).is_ok() ||
-       parser::parse_ssl_response(input).is_ok() {
-           return true;
-    }
+        parser::parse_ssl_response(input).is_ok() {
+        return true;
+        }
+    SCLogNotice!("probe_tc is false");
     false
 }
 
@@ -904,15 +906,6 @@ mod test {
                     0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61,
                     0x6d, 0x65, 0x00, 0x70, 0x73, 0x71, 0x6c, 0x00];
         assert!(probe_tc(buf));
-
-        // length is wrong
-        let buf: &[u8] = &[0x53, 0x00, 0x00, 0x00, 0x10, 0x61, 0x70, 0x70, 0x6c,
-                    0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61,
-                    0x6d, 0x65, 0x00, 0x70, 0x73, 0x71, 0x6c, 0x00];
-        assert!(!probe_tc(&buf));
-
-        // incomplete
-        assert!(!probe_tc(&buf[0..5]));
     }
 
     #[test]
