@@ -98,13 +98,13 @@ impl ErrorNoticeMessage {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum SslResponse {
+pub enum SslResponseMessage {
     SslAccepted,
     SslRejected,
     InvalidResponse,
 }
 
-impl From<u8> for SslResponse {
+impl From<u8> for SslResponseMessage {
     fn from(identifier: u8) -> Self {
         match identifier {
             b'S' => Self::SslAccepted,
@@ -114,7 +114,7 @@ impl From<u8> for SslResponse {
     }
 }
 
-impl From<char> for SslResponse {
+impl From<char> for SslResponseMessage {
     fn from(identifier: char) -> Self {
         match identifier {
             'S' => Self::SslAccepted,
@@ -148,7 +148,7 @@ pub struct ReadyForQueryMessage {
 
 #[derive(Debug, PartialEq)]
 pub enum PgsqlBEMessage {
-    SslResponse(SslResponse),
+    SslResponse(SslResponseMessage),
     ErrorResponse(ErrorNoticeMessage),
     NoticeResponse(ErrorNoticeMessage),
     AuthenticationOk(AuthenticationMessage),
@@ -164,7 +164,8 @@ pub enum PgsqlBEMessage {
     ParameterStatus(ParameterStatusMessage),
     BackendKeyData(BackendKeyDataMessage),
     ReadyForQuery(ReadyForQueryMessage),
-    RowDescription(RowDescription),
+    RowDescription(RowDescriptionMessage),
+    DataRow(DataRowMessage),
 }
 
 impl fmt::Display for PgsqlBEMessage {
@@ -176,8 +177,8 @@ impl fmt::Display for PgsqlBEMessage {
 impl PgsqlBEMessage {
     pub fn get_message_type(&self) -> &str {
         match self {
-            PgsqlBEMessage::SslResponse(SslResponse::SslAccepted) => "SslAccepted",
-            PgsqlBEMessage::SslResponse(SslResponse::SslRejected) => "SslRejected",
+            PgsqlBEMessage::SslResponse(SslResponseMessage::SslAccepted) => "SslAccepted",
+            PgsqlBEMessage::SslResponse(SslResponseMessage::SslRejected) => "SslRejected",
             PgsqlBEMessage::ErrorResponse(_) => "ErrorResponse",
             PgsqlBEMessage::NoticeResponse(_) => "NoticeResponse",
             PgsqlBEMessage::AuthenticationOk(_) => "AuthenticationOk",
@@ -194,7 +195,8 @@ impl PgsqlBEMessage {
             PgsqlBEMessage::BackendKeyData(_) => "BackendKeyData",
             PgsqlBEMessage::ReadyForQuery(_) => "ReadyForQuery",
             PgsqlBEMessage::RowDescription(_) => "RowDescription",
-            PgsqlBEMessage::SslResponse(SslResponse::InvalidResponse) => "InvalidBEMessage",
+            PgsqlBEMessage::DataRow(_) => "DataRow",
+            PgsqlBEMessage::SslResponse(SslResponseMessage::InvalidResponse) => "InvalidBEMessage",
         }
     }
 
@@ -262,9 +264,9 @@ pub struct RowField {
     table_oid: u32,
     column_index: u16,
     data_type_oid: u32,
-    // "Note that negative values denote variable-width types"
+    // "see pg_type.typlen. Note that negative values denote variable-width types"
     data_type_size: i16,
-    // "The value will generally be -1 for types that do not need atttypmod."
+    // "The value will generally be -1 for types that do not need pg_attribute.atttypmod."
     type_modifier: i32,
     // "The format code being used for the field. Currently will be zero (text) or one (binary). In a RowDescription returned from the variant of Describe, will always be zero"
     format_code: u16,
@@ -272,11 +274,28 @@ pub struct RowField {
 
 // TODO should I have a constructor here?
 #[derive(Debug, PartialEq)]
-pub struct RowDescription {
+pub struct RowDescriptionMessage {
     identifier: u8,
     length: u32,
     field_count: u16,
     fields: Vec<RowField>,
+}
+
+#[derive(Debug, PartialEq)]
+struct ColumnFieldValue {
+    // Can be 0, or -1 as a special NULL column value
+    value_length: i32,
+    // If length is -1, no value bytes will follow
+    // value will have `value_length` bytes
+    value: Option<Vec<u8>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct DataRowMessage {
+    identifier: u8,
+    length: u32,
+    field_count: u16,
+    fields: Vec<ColumnFieldValue>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -634,7 +653,7 @@ named!(pub parse_ssl_response<PgsqlBEMessage>,
     do_parse!(
         tag: alt!(char!('N') | char!('S'))
         >> (PgsqlBEMessage::SslResponse(
-            SslResponse::from(tag))
+            SslResponseMessage::from(tag))
         )
     ));
 
@@ -694,13 +713,41 @@ named!(pub parse_row_description<PgsqlBEMessage>,
         >> field_count: dbg_dmp!(be_u16)
         >> fields: dbg_dmp!(terminated!(many1!(parse_row_field), tag!("\x00")))
         >> (PgsqlBEMessage::RowDescription(
-            RowDescription {
+            RowDescriptionMessage {
                 identifier,
                 length,
                 field_count,
                 fields,
         }))
     ));
+
+// TODO I must find a way to turn value into Option<vec<u8>>
+named!(parse_data_row_value<ColumnFieldValue>,
+    do_parse!(
+        value_length: be_i32
+        >> value: cond!(value_length >= 0, take!(value_length))
+        >> (ColumnFieldValue {
+            value_length,
+            value,
+        })
+    ));
+
+named!(pub parse_row_data<PgsqlBEMessage>,
+    do_parse!(
+        identifier: verify!(be_u8, |&x| x == b'D')
+        >> length: verify!(be_u32, |&x| x >= 4)
+        >> field_count: be_u16
+        >> rows: flat_map!(take!(length - 6), many_m_n!(0, field_count.into(), call!(parse_data_row_value)))
+        >> (PgsqlBEMessage::DataRow(
+            DataRowMessage {
+                identifier,
+                length,
+                field_count,
+                fields: rows,
+            }
+        ))
+    ));
+
 
 // TODO - Question - although this works with the unittests, if I run the tests w/
 // dbg_dmp I can see that there are errors for the tag!("\x00") cases.
@@ -1663,13 +1710,13 @@ mod tests {
     fn test_parse_response() {
         // An SSL response - N
         let buf: &[u8] = &[0x4e];
-        let response_ok = PgsqlBEMessage::SslResponse(SslResponse::SslRejected);
+        let response_ok = PgsqlBEMessage::SslResponse(SslResponseMessage::SslRejected);
         let (_remainder, result) = parse_ssl_response(&buf).unwrap();
         assert_eq!(result, response_ok);
 
         // An SSL response - S
         let buf: &[u8] = &[0x53];
-        let response_ok = PgsqlBEMessage::SslResponse(SslResponse::SslAccepted);
+        let response_ok = PgsqlBEMessage::SslResponse(SslResponseMessage::SslAccepted);
 
         let (_remainder, result) = parse_ssl_response(&buf).unwrap();
         assert_eq!(result, response_ok);
@@ -1839,18 +1886,14 @@ mod tests {
         fields_vec.push(field3);
 
         let ok_res = PgsqlBEMessage::RowDescription(
-            RowDescription {
+            RowDescriptionMessage {
                 identifier: b'T',
                 length: 80,
                 field_count: 3,
                 fields: fields_vec,
             });
 
-        // parse a row description message
-        // assert_eq ok_res
-
         let result = parse_row_description(&buffer);
-        // assert!(result.is_ok());
 
         match result {
             Ok((rem, response)) => {
@@ -1866,6 +1909,59 @@ mod tests {
             },
             _ => {
                 panic!("Unexpected behavior");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_data_row() {
+        let buffer: &[u8] = &[0x44, 0x00, 0x00, 0x00, 0x23, 0x00, 0x03,
+                            0x00, 0x00, 0x00, 0x07, 0x65, 0x74, 0x2f, 0x6f, 0x70,0x65, 0x6e,
+                            0x00, 0x00, 0x00, 0x03, 0x36, 0x2e, 0x30,
+                            0x00, 0x00, 0x00, 0x07, 0x32, 0x30, 0x32, 0x31, 0x37, 0x30, 0x31];
+
+        let mut rows_vec = Vec::<ColumnFieldValue>::new();
+
+        let field1 = ColumnFieldValue {
+            value_length: 7,
+            value: Some([0x65, 0x74, 0x2f, 0x6f, 0x70,0x65, 0x6e].to_vec()),
+        };
+        let field2 = ColumnFieldValue {
+            value_length: 3,
+            value: Some([0x36, 0x2e, 0x30].to_vec()),
+        };
+        let field3 = ColumnFieldValue {
+            value_length: 7,
+            value: Some([0x32, 0x30, 0x32, 0x31, 0x37, 0x30, 0x31].to_vec()),
+        };
+        rows_vec.push(field1);
+        rows_vec.push(field2);
+        rows_vec.push(field3);
+
+        let ok_res = PgsqlBEMessage::DataRow(
+            DataRowMessage {
+                identifier: b'D',
+                length: 35,
+                field_count: 3,
+                fields: rows_vec,
+            });
+
+        let result = parse_row_data(&buffer);
+
+        match result {
+            Ok((rem, message)) => {
+                assert_eq!(message, ok_res);
+                assert!(rem.is_empty());
+            },
+            Err(nom::Err::Incomplete(needed)) => {
+                panic!("Shouldn't be Incomplete! Expected Ok(). Needed: {:?}", needed);
+            },
+            Err(nom::Err::Error((rem, err))) => {
+                println!("Remainder is {:?}", rem);
+                panic!("Shouldn't be Err {:?}, expected Ok().", err);
+            },
+            _ => {
+                panic!("Unexpected behavior, should be Ok()");
             }
         }
     }
