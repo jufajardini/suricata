@@ -163,6 +163,7 @@ pub enum PgsqlBEMessage {
     AuthenticationSASLFinal(AuthenticationMessage),
     ParameterStatus(ParameterStatusMessage),
     BackendKeyData(BackendKeyDataMessage),
+    CommandComplete(RegularPacket),
     ReadyForQuery(ReadyForQueryMessage),
     RowDescription(RowDescriptionMessage),
     DataRow(DataRowMessage),
@@ -193,6 +194,7 @@ impl PgsqlBEMessage {
             PgsqlBEMessage::AuthenticationSASLFinal(_) => "AuthenticationSASLFinal",
             PgsqlBEMessage::ParameterStatus(_) => "ParameterStatus",
             PgsqlBEMessage::BackendKeyData(_) => "BackendKeyData",
+            PgsqlBEMessage::CommandComplete(_) => "CommandComplete",
             PgsqlBEMessage::ReadyForQuery(_) => "ReadyForQuery",
             PgsqlBEMessage::RowDescription(_) => "RowDescription",
             PgsqlBEMessage::DataRow(_) => "DataRow",
@@ -459,7 +461,7 @@ named!(pub parse_sasl_response<PgsqlFEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'p')
         >> length: verify!(be_u32, |&x| x > 4)
-        >> payload: flat_map!(take!(length - 4), rest)
+        >> payload: take!(length - 4)
         >> (PgsqlFEMessage::SASLResponse(
             RegularPacket {
             identifier,
@@ -672,6 +674,20 @@ named!(parse_backend_key_data_message<PgsqlBEMessage>,
             }))
     ));
 
+named!(parse_command_complete<PgsqlBEMessage>,
+    do_parse!(
+        identifier: verify!(be_u8, |&x| x == b'C')
+        >> length: verify!(be_u32, |&x| x > 4)
+        >> payload: take!(length - 4)
+        >> (PgsqlBEMessage::CommandComplete(
+            RegularPacket {
+                identifier,
+                length,
+                payload: payload.to_vec(),
+            }
+        ))
+    ));
+
 named!(parse_ready_for_query<PgsqlBEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'Z')
@@ -721,14 +737,18 @@ named!(pub parse_row_description<PgsqlBEMessage>,
         }))
     ));
 
-// TODO I must find a way to turn value into Option<vec<u8>>
 named!(parse_data_row_value<ColumnFieldValue>,
     do_parse!(
         value_length: be_i32
         >> value: cond!(value_length >= 0, take!(value_length))
         >> (ColumnFieldValue {
             value_length,
-            value,
+            value: {
+                match value {
+                    Some(data) => Some(data.to_vec()),
+                    None => None,
+                }
+            },
         })
     ));
 
@@ -868,7 +888,10 @@ named!(pub pgsql_parse_response<PgsqlBEMessage>,
             b'N' => call!(pgsql_parse_notice_response) |
             b'R' => call!(pgsql_parse_authentication_message) |
             b'S' => call!(parse_parameter_status_message) |
-            b'Z' => call!(parse_ready_for_query)
+            b'C' => call!(parse_command_complete) |
+            b'Z' => call!(parse_ready_for_query) |
+            b'T' => call!(parse_row_description) |
+            b'D' => call!(parse_row_data)
             // _ => {} // TODO question should I add an unknown message type here, or maybe an error?
         )
         >> (message)
@@ -1090,10 +1113,10 @@ mod tests {
         0x35, 0x65, 0x39, 0x63, 0x39, 0x31, 0x34, 0x32,
         0x00];
         let ok_result = PgsqlFEMessage::PasswordMessage(
-        RegularPacket {
-        identifier: b'p',
-        length: 40,
-        payload: br#"md5ceffc01dcde7541829deef6b5e9c9142"#.to_vec(),
+            RegularPacket {
+            identifier: b'p',
+            length: 40,
+            payload: br#"md5ceffc01dcde7541829deef6b5e9c9142"#.to_vec(),
         });
         let (_remainder, result) = parse_password_message(&buf).unwrap();
         assert_eq!(result, ok_result);
@@ -1959,6 +1982,37 @@ mod tests {
             Err(nom::Err::Error((rem, err))) => {
                 println!("Remainder is {:?}", rem);
                 panic!("Shouldn't be Err {:?}, expected Ok().", err);
+            },
+            _ => {
+                panic!("Unexpected behavior, should be Ok()");
+            }
+        }
+    }
+
+    #[test]
+    fn test_command_complete() {
+        let buffer: &[u8] = &[0x43, 0x00, 0x00, 0x00, 0x0d, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x33, 0x00];
+
+        let ok_res = PgsqlBEMessage::CommandComplete(
+            RegularPacket {
+                identifier: b'C',
+                length: 13,
+                payload: b"SELECT 3\0".to_vec(),
+            });
+
+        let result = pgsql_parse_response(&buffer);
+
+        match result {
+            Ok((rem, message)) => {
+                assert_eq!(ok_res, message);
+                assert!(rem.is_empty());
+            },
+            Err(nom::Err::Incomplete(needed)) => {
+                panic!("Shouldn't be Incomplete! Expected Ok(). Needed: {:?}", needed);
+            },
+            Err(nom::Err::Error((rem, err))) => {
+                println!("Unparsed slice: {:?}", rem);
+                panic!("Shouldn't be Error: {:?}, expected Ok()", err);
             },
             _ => {
                 panic!("Unexpected behavior, should be Ok()");
