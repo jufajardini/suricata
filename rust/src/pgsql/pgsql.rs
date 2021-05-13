@@ -401,6 +401,8 @@ impl PgsqlState {
                     }
                 }
             } else {
+                SCLogNotice!("Found a response. Not sure what it is, yet");
+                SCLogNotice!("State progress is {:?}", &self.state_progress);
                 match parser::pgsql_parse_response(start) {
                     Ok((rem, response)) => {
                         start = rem;
@@ -446,7 +448,13 @@ impl PgsqlState {
                         SCLogNotice!("start is: {:?}", &start);
                         return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
                     }
+                    Err(nom::Err::Error((rem, err))) => {
+                        SCLogNotice!("Suricata interprets an error while parsing the response: {:?}", err);
+                        SCLogNotice!("Unparsed input is: {:?}", rem);
+                        return AppLayerResult::err();
+                    }
                     Err(_) => {
+                        SCLogNotice!("Suricata interprets another error while parsing the response");
                         return AppLayerResult::err();
                     }
                 }
@@ -454,6 +462,7 @@ impl PgsqlState {
         }
 
         // All input was fully consumed.
+        SCLogNotice!("Suricata interprets we're done with the input");
         return AppLayerResult::ok();
     }
 
