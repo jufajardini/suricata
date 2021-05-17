@@ -102,6 +102,9 @@ pub enum PgsqlStateProgress {
     ConnectionCompleted,
     ReadyForQueryReceived,
     SimpleQueryReceived,
+    RowDescriptionReceived,
+    DataRowReceived,
+    CommandCompletedReceived,
     ErrorMessageReceived,
     UnknownState,
 }
@@ -233,6 +236,7 @@ impl PgsqlState {
                                     SCLogNotice!("Match: SimpleQuery");
                                     tx.requests.push(request);
                                     self.state_progress = PgsqlStateProgress::SimpleQueryReceived;
+                                    // TODO here we may want to save the command that was received, to compare that later on when we receive command completed
                                 },
                                 _ =>{
                                     SCLogNotice!("Request didn't match anything. State Progress: {:?}", &self.state_progress);
@@ -406,8 +410,10 @@ impl PgsqlState {
                 match parser::pgsql_parse_response(start) {
                     Ok((rem, response)) => {
                         start = rem;
+                        SCLogNotice!("- Start is: {:?}", &start);
                         SCLogNotice!("Found a response.");
                         SCLogNotice!("- Response: {:?}", &response);
+                        SCLogNotice!("- Response size is: {:?}", std::mem::size_of_val(&response));
                         let message_type = response.get_message_type();
                         // We must also match on response type, so we can change state...
                         match message_type {
@@ -429,12 +435,28 @@ impl PgsqlState {
                                 SCLogNotice!("Message type is {}", &message_type);
                                 self.state_progress = PgsqlStateProgress::SimpleAuthenticationReceived;
                             },
+                            "RowDescription" => {
+                                self.state_progress = PgsqlStateProgress::RowDescriptionReceived;
+                                SCLogNotice!("State is: {:?}", &self.state_progress);
+                                SCLogNotice!("Input length is {:?}", start.len());
+                            },
+                            "DataRow" => {
+                                self.state_progress = PgsqlStateProgress::DataRowReceived;
+                                SCLogNotice!("State is: {:?}", &self.state_progress);
+                                // SCLogNotice!("Response is: {:?}", &response);
+                                println!("Response: {:?}", &response);
+                            },
+                            "CommandCompleted" => {
+                                self.state_progress = PgsqlStateProgress::CommandCompletedReceived;
+                                // TODO here, we may want to compare command that was stored when query was sent with what we received here
+                                SCLogNotice!("State is: {:?}", &self.state_progress);
+                                SCLogNotice!("Input length is {:?}", start.len());
+                            },
                             _ => {
                                 // TODO handle unexpected situations here
                                 SCLogNotice!("In parse_response, we don't know what do to here, yet.");
                                 SCLogNotice!("Response is: {:?}", &response);
-                                SCLogNotice!("State is: {:?}", &self.state_progress);
-                            }
+                            },
                         }
                         // Handle the tx here to avoid borrow checker issues
                         let tx = self.find_or_create_tx();
@@ -444,8 +466,8 @@ impl PgsqlState {
                         let consumed = input.len() - start.len();
                         let needed_estimation = start.len() + 1;
                         SCLogNotice!("Suricata interprets the response as incomplete");
-                        SCLogNotice!("Needed: {:?}, estimated needed: {:?}", needed, needed_estimation);
-                        SCLogNotice!("start is: {:?}", &start);
+                        SCLogNotice!("Needed: {:?}, consumed: {:?}", &needed, &consumed);
+                        SCLogNotice!("Start in incomplete is: {:?}", &start);
                         return AppLayerResult::incomplete(consumed as u32, needed_estimation as u32);
                     }
                     Err(nom::Err::Error((rem, err))) => {

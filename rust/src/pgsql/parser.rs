@@ -725,9 +725,12 @@ named!(parse_row_field<RowField>,
 named!(pub parse_row_description<PgsqlBEMessage>,
     do_parse!(
         identifier: dbg_dmp!(verify!(be_u8, |&x| x == b'T'))
-        >> length: verify!(be_u32, |&x| x >= 4)
+        >> length: verify!(be_u32, |&x| x > 6)
         >> field_count: dbg_dmp!(be_u16)
-        >> fields: dbg_dmp!(terminated!(many1!(parse_row_field), tag!("\x00")))
+        >> fields: flat_map!(
+            take!(length - 6),
+            many_m_n!(0, field_count.into(),
+                call!(parse_row_field)))
         >> (PgsqlBEMessage::RowDescription(
             RowDescriptionMessage {
                 identifier,
@@ -739,8 +742,9 @@ named!(pub parse_row_description<PgsqlBEMessage>,
 
 named!(parse_data_row_value<ColumnFieldValue>,
     do_parse!(
+        // TODO make sure that the -1s here don't mess up with everything
         value_length: be_i32
-        >> value: cond!(value_length >= 0, take!(value_length))
+        >> value: dbg_dmp!(cond!(value_length >= 0, take!(value_length)))
         >> (ColumnFieldValue {
             value_length,
             value: {
@@ -755,9 +759,9 @@ named!(parse_data_row_value<ColumnFieldValue>,
 named!(pub parse_row_data<PgsqlBEMessage>,
     do_parse!(
         identifier: verify!(be_u8, |&x| x == b'D')
-        >> length: verify!(be_u32, |&x| x >= 4)
+        >> length: verify!(be_u32, |&x| x > 6)
         >> field_count: be_u16
-        >> rows: flat_map!(take!(length - 6), many_m_n!(0, field_count.into(), call!(parse_data_row_value)))
+        >> rows: dbg_dmp!(flat_map!(take!(length - 6), many_m_n!(0, field_count.into(), call!(parse_data_row_value))))
         >> (PgsqlBEMessage::DataRow(
             DataRowMessage {
                 identifier,
@@ -882,7 +886,10 @@ named!(pgsql_parse_notice_response<PgsqlBEMessage>,
 
 named!(pub pgsql_parse_response<PgsqlBEMessage>,
     do_parse!(
-        message: switch!(peek!(be_u8),
+        // TODO I think it will be better if I use length here...
+        pseudo_header: peek!(tuple!(be_u8, be_u32))
+        // TODO check this pseudo_header + 1
+        >> message: flat_map!(take!(pseudo_header.1 + 1), switch!(value!(pseudo_header.0),
             b'E' => call!(pgsql_parse_error_response) |
             b'K' => call!(parse_backend_key_data_message) |
             b'N' => call!(pgsql_parse_notice_response) |
@@ -893,7 +900,7 @@ named!(pub pgsql_parse_response<PgsqlBEMessage>,
             b'T' => call!(parse_row_description) |
             b'D' => call!(parse_row_data)
             // _ => {} // TODO question should I add an unknown message type here, or maybe an error?
-        )
+        ))
         >> (message)
     ));
 
@@ -1450,8 +1457,8 @@ mod tests {
         let result_incomplete = pgsql_parse_response(&buf[0..22]);
         match result_incomplete {
             Err(nom::Err::Incomplete(needed)) => {
-                // parser first tries to take whole length (is )150 - 4), but buffer is incomplete
-                assert_eq!(needed, Size(146));
+                // parser first tries to take whole message (length + identifier = 151), but buffer is incomplete
+                assert_eq!(needed, Size(151));
             }
             _ => {
                 panic!("Unexpected behavior. Should be incomplete.");
@@ -1539,7 +1546,7 @@ mod tests {
             panic!("Should not be Ok(_), expected Incomplete!"),
             Err(nom::Err::Error((_remainder, err))) =>
             panic!("Should not be error {:?}, expected Incomplete!", err),
-            Err(nom::Err::Incomplete(needed)) => assert_eq!(needed, Size(34)),
+            Err(nom::Err::Incomplete(needed)) => assert_eq!(needed, Size(43)),
             _ => panic!("Unexpected behavior, expected Incomplete.")
         }
     }
@@ -1586,7 +1593,7 @@ mod tests {
             Ok((_remainder, _message)) => panic!("Should not be Ok(_), expected Incomplete!"),
             Err(nom::Err::Error((_remainder, err))) => panic!("Shouldn't be error {:?} expected Incomplete!", err),
             Err(nom::Err::Incomplete(needed)) => {
-                assert_eq!(needed, Size(84));
+                assert_eq!(needed, Size(93));
             }
             _ => panic!("Unexpected behavior, expected Ok(_)")
         }
@@ -1629,16 +1636,28 @@ mod tests {
         let result_incomplete = pgsql_parse_response(&buf[0..34]);
         match result_incomplete {
             Err(nom::Err::Incomplete(needed)) => {
-                assert_eq!(needed, Size(46));
+                assert_eq!(needed, Size(55));
             }
             _ => panic!("Unexpected behavior, expected incomplete."),
         }
 
-        let result_err = pgsql_parse_response(&buf[1..34]);
+        let bad_buf: &[u8] = &[
+        /* ` */             0x60,
+        /* 54 */            0x00, 0x00, 0x00, 0x36,
+        /* 12 */            0x00, 0x00, 0x00, 0x0c,
+        /* signature */     0x76, 0x3d, 0x64, 0x31, 0x50, 0x58, 0x61, 0x38, 0x54,
+                            0x4b, 0x46, 0x50, 0x5a, 0x72, 0x52, 0x33, 0x4d, 0x42,
+                            0x52, 0x6a, 0x4c, 0x79, 0x33, 0x2b, 0x4a, 0x36, 0x79,
+                            0x78, 0x72, 0x66, 0x77, 0x2f, 0x7a, 0x7a, 0x70, 0x38,
+                            0x59, 0x54, 0x39, 0x65, 0x78, 0x56, 0x37, 0x73, 0x38, 0x3d];
+        let result_err = pgsql_parse_response(&bad_buf);
         match result_err {
             Err(nom::Err::Error((_remainder, err))) => {
                 assert_eq!(err, nom::error::ErrorKind::Switch);
-            }
+            },
+            Err(nom::Err::Incomplete(_)) => {
+                panic!("Unexpected Incomplete, should be ErrorKind::Switch");
+            },
             _ => panic!("Unexpected behavior, expected Error"),
         }
     }
@@ -1671,7 +1690,7 @@ mod tests {
                 assert_eq!(remainder.len(), 0);
             }
             Err(nom::Err::Error((_remainder, err))) => panic!("Shouldn't be error {:?}, expected Ok(_)", err),
-            Err(nom::Err::Incomplete(needed)) => panic!("Shouldn't be incomplete: ?{:?}, expected Ok(_)", needed),
+            Err(nom::Err::Incomplete(needed)) => panic!("Shouldn't be incomplete: {:?}, expected Ok(_)", needed),
             _ => panic!("Unexpected behavior, expected Ok(_)"),
         }
 
