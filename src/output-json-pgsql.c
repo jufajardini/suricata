@@ -55,8 +55,8 @@
 #include "rust.h"
 
 typedef struct LogPgsqlFileCtx_ {
-  uint32_t flags;
-  OutputJsonCtx *eve_ctx;
+    uint32_t flags;
+    OutputJsonCtx *eve_ctx;
 } LogPgsqlFileCtx;
 
 typedef struct LogPgsqlLogThread_ {
@@ -69,11 +69,11 @@ static int JsonPgsqlLogger(ThreadVars *tv, void *thread_data, const Packet *p, F
 {
     PgsqlTransaction *pgsql_tx = tx;
     LogPgsqlLogThread *thread = thread_data;
-    SCLogNotice("Logging pgsql transaction %"PRIu64".", pgsql_tx->tx_id);
-
+    SCLogNotice("Logging pgsql transaction %" PRIu64 ".", pgsql_tx->tx_id);
 
     // TODO must figure out the best way to pass that new argument
-    JsonBuilder *jb = CreateEveHeader(p, LOG_DIR_PACKET, "pgsql", NULL, thread->pgsqllog_ctx->eve_ctx);
+    JsonBuilder *jb =
+            CreateEveHeader(p, LOG_DIR_PACKET, "pgsql", NULL, thread->pgsqllog_ctx->eve_ctx);
     if (unlikely(jb == NULL)) {
         return TM_ECODE_FAILED;
     }
@@ -101,7 +101,6 @@ static OutputInitResult OutputPgsqlLogInitSub(ConfNode *conf, OutputCtx *parent_
 
     AppLayerParserRegisterLogger(IPPROTO_TCP, ALPROTO_PGSQL);
     return OutputJsonLogInitSub(conf, parent_ctx);
-
 }
 
 static TmEcode JsonPgsqlLogThreadInit(ThreadVars *t, const void *initdata, void **data)
@@ -149,10 +148,9 @@ void JsonPgsqlLogRegister(void)
     }
     /* PGSQL_END_REMOVE */
     /* Register as an eve sub-module. */
-    OutputRegisterTxSubModule(LOGGER_JSON_PGSQL, "eve-log", "JsonPgsqlLog",
-        "eve-log.postgresql", OutputPgsqlLogInitSub, ALPROTO_PGSQL,
-        JsonPgsqlLogger, JsonPgsqlLogThreadInit,
-        JsonPgsqlLogThreadDeinit, NULL);
+    OutputRegisterTxSubModule(LOGGER_JSON_PGSQL, "eve-log", "JsonPgsqlLog", "eve-log.postgresql",
+            OutputPgsqlLogInitSub, ALPROTO_PGSQL, JsonPgsqlLogger, JsonPgsqlLogThreadInit,
+            JsonPgsqlLogThreadDeinit, NULL);
 
     SCLogNotice("PostgreSQL JSON logger registered.");
 }
