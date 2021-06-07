@@ -69,7 +69,7 @@ static int JsonPgsqlLogger(ThreadVars *tv, void *thread_data, const Packet *p, F
 {
     PgsqlTransaction *pgsql_tx = tx;
     LogPgsqlLogThread *thread = thread_data;
-    SCLogNotice("Logging pgsql transaction %" PRIu64 ".", pgsql_tx->tx_id);
+    SCLogNotice("Logging pgsql transaction %" PRIu64 ".", tx_id);
 
     // TODO must figure out the best way to pass that new argument
     JsonBuilder *jb =
@@ -80,7 +80,7 @@ static int JsonPgsqlLogger(ThreadVars *tv, void *thread_data, const Packet *p, F
 
     jb_open_object(jb, "pgsql");
 
-    if (!rs_pgsql_logger_log(tx, jb)) {
+    if (!rs_pgsql_logger_log(pgsql_tx, jb)) {
         goto error;
     }
     jb_close(jb);
