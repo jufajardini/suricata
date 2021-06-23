@@ -1348,7 +1348,7 @@ static uint16_t RegisterCounter(const char *name, const char *tm_name,
     return id;
 }
 
-static int StatsTestCounterReg02(void)
+static int StatsTestCounterReg01(void)
 {
     StatsPublicThreadContext pctx;
 
@@ -1358,7 +1358,7 @@ static int StatsTestCounterReg02(void)
     return RegisterCounter(NULL, NULL, &pctx) == 0;
 }
 
-static int StatsTestCounterReg03(void)
+static int StatsTestCounterReg02(void)
 {
     StatsPublicThreadContext pctx;
     int result;
@@ -1374,7 +1374,7 @@ static int StatsTestCounterReg03(void)
     PASS;
 }
 
-static int StatsTestCounterReg04(void)
+static int StatsTestCounterReg03(void)
 {
     StatsPublicThreadContext pctx;
     int result;
@@ -1394,7 +1394,7 @@ static int StatsTestCounterReg04(void)
     PASS;
 }
 
-static int StatsTestGetCntArray05(void)
+static int StatsTestGetCntArray04(void)
 {
     ThreadVars tv;
     int id;
@@ -1409,7 +1409,7 @@ static int StatsTestGetCntArray05(void)
     PASS;
 }
 
-static int StatsTestGetCntArray06(void)
+static int StatsTestGetCntArray05(void)
 {
     ThreadVars tv;
     int id;
@@ -1428,7 +1428,7 @@ static int StatsTestGetCntArray06(void)
     PASS;
 }
 
-static int StatsTestCntArraySize07(void)
+static int StatsTestCntArraySize06(void)
 {
     ThreadVars tv;
     StatsPrivateThreadContext *pca = NULL;
@@ -1455,7 +1455,7 @@ static int StatsTestCntArraySize07(void)
     PASS_IF(result == 2);
 }
 
-static int StatsTestUpdateCounter08(void)
+static int StatsTestUpdateCounter07(void)
 {
     ThreadVars tv;
     StatsPrivateThreadContext *pca = NULL;
@@ -1479,7 +1479,7 @@ static int StatsTestUpdateCounter08(void)
     PASS;
 }
 
-static int StatsTestUpdateCounter09(void)
+static int StatsTestUpdateCounter08(void)
 {
     ThreadVars tv;
     StatsPrivateThreadContext *pca = NULL;
@@ -1507,7 +1507,7 @@ static int StatsTestUpdateCounter09(void)
     PASS;
 }
 
-static int StatsTestUpdateGlobalCounter10(void)
+static int StatsTestUpdateGlobalCounter09(void)
 {
     ThreadVars tv;
     StatsPrivateThreadContext *pca = NULL;
@@ -1542,7 +1542,7 @@ static int StatsTestUpdateGlobalCounter10(void)
     PASS;
 }
 
-static int StatsTestCounterValues11(void)
+static int StatsTestCounterValues10(void)
 {
     ThreadVars tv;
     StatsPrivateThreadContext *pca = NULL;
@@ -1579,7 +1579,7 @@ static int StatsTestCounterValues11(void)
     PASS;
 }
 
-static int StatsTestQSortStatsTable(void)
+static int StatsTestQSortStatsTable11(void)
 {
     uint32_t nstats = 14;
     StatsRecord *test_table = SCCalloc(nstats, sizeof(StatsRecord));
@@ -1649,17 +1649,17 @@ static int StatsTestQSortStatsTable(void)
 void StatsRegisterTests(void)
 {
 #ifdef UNITTESTS
+    UtRegisterTest("StatsTestCounterReg01", StatsTestCounterReg01);
     UtRegisterTest("StatsTestCounterReg02", StatsTestCounterReg02);
     UtRegisterTest("StatsTestCounterReg03", StatsTestCounterReg03);
-    UtRegisterTest("StatsTestCounterReg04", StatsTestCounterReg04);
+    UtRegisterTest("StatsTestGetCntArray04", StatsTestGetCntArray04);
     UtRegisterTest("StatsTestGetCntArray05", StatsTestGetCntArray05);
-    UtRegisterTest("StatsTestGetCntArray06", StatsTestGetCntArray06);
-    UtRegisterTest("StatsTestCntArraySize07", StatsTestCntArraySize07);
+    UtRegisterTest("StatsTestCntArraySize06", StatsTestCntArraySize06);
+    UtRegisterTest("StatsTestUpdateCounter07", StatsTestUpdateCounter07);
     UtRegisterTest("StatsTestUpdateCounter08", StatsTestUpdateCounter08);
-    UtRegisterTest("StatsTestUpdateCounter09", StatsTestUpdateCounter09);
-    UtRegisterTest("StatsTestUpdateGlobalCounter10",
-                   StatsTestUpdateGlobalCounter10);
-    UtRegisterTest("StatsTestCounterValues11", StatsTestCounterValues11);
-    UtRegisterTest("StatsTestQSortStatsTable", StatsTestQSortStatsTable);
+    UtRegisterTest("StatsTestUpdateGlobalCounter09",
+                   StatsTestUpdateGlobalCounter09);
+    UtRegisterTest("StatsTestCounterValues10", StatsTestCounterValues10);
+    UtRegisterTest("StatsTestQSortStatsTable11", StatsTestQSortStatsTable11);
 #endif
 }
