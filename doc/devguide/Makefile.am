@@ -14,6 +14,8 @@ EXTRA_DIST = \
 	internals/index.rst \
 	internals/pipeline/index.rst \
 	internals/datastructs/index.rst \
+	internals/utils/index.rst \
+	internals/utils/jsonbuilder.rst \
 	codebase/unittests.rst \
 	codebase/index.rst \
 	codebase/code-style.rst \
