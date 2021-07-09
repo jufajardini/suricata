@@ -94,5 +94,6 @@ fn log_pgsql_parameters(params: &PgsqlStartupParameters) -> Result<JsonBuilder, 
 #[no_mangle]
 pub extern "C" fn rs_pgsql_logger_log(tx: *mut std::os::raw::c_void, js: &mut JsonBuilder) -> bool {
     let tx = cast_pointer!(tx, PgsqlTransaction);
+    SCLogNotice!("----------- PGSQL rs_pgsql_logger_log call.");
     log_pgsql(tx, js).is_ok()
 }
