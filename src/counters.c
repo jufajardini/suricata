@@ -108,7 +108,6 @@ bool stats_stream_events = false;
 static int StatsOutput(ThreadVars *tv);
 static int StatsThreadRegister(const char *thread_name, StatsPublicThreadContext *);
 void StatsReleaseCounters(StatsCounter *head);
-static int StatsTableRecordsSortByName(const void *a, const void *b);
 
 /** stats table is filled each interval and passed to the
  *  loggers. Initialized at first use. */
@@ -633,7 +632,7 @@ static void StatsCopyCounterValue(StatsLocalCounter *pcae)
 /**
  *  \brief Qsort comparison function to sort StatsTable by StatsRecord
  */
-static int StatsTableRecordsSortByName(const void *a, const void *b)
+int StatsTableRecordsSortByName(const void *a, const void *b)
 {
     const StatsRecord *s0 = a;
     const StatsRecord *s1 = b;
@@ -1351,11 +1350,14 @@ static uint16_t RegisterCounter(const char *name, const char *tm_name,
 static int StatsTestCounterReg01(void)
 {
     StatsPublicThreadContext pctx;
+    int result;
 
     memset(&pctx, 0, sizeof(StatsPublicThreadContext));
 
-    // TODO Question may I convert this to FAIL/PASS?
-    return RegisterCounter(NULL, NULL, &pctx) == 0;
+    result = RegisterCounter(NULL, NULL, &pctx);
+    FAIL_IF(result);
+
+    PASS;
 }
 
 static int StatsTestCounterReg02(void)
@@ -1581,23 +1583,104 @@ static int StatsTestCounterValues10(void)
 
 static int StatsTestQSortStatsTable11(void)
 {
+    // ThreadVars tv;
+    // StatsPrivateThreadContext *pca = NULL;
+
+    // int result = 1;
+    // uint16_t id1, id2, id3, id4;
+
+    // memset(&tv, 0, sizeof(ThreadVars));
+
+    // id1 = RegisterCounter("t1", "c1", &tv.perf_public_ctx);
+    // id2 = RegisterCounter("t2", "c2", &tv.perf_public_ctx);
+    // id3 = RegisterCounter("t3", "c3", &tv.perf_public_ctx);
+    // id4 = RegisterCounter("t4", "c4", &tv.perf_public_ctx);
+
+    // StatsGetAllCountersArray(&tv.perf_public_ctx, &tv.perf_private_ctx);
+    // pca = &tv.perf_private_ctx;
+
+    // StatsIncr(&tv, id1);
+    // StatsAddUI64(&tv, id2, 256);
+    // StatsAddUI64(&tv, id3, 257);
+    // StatsAddUI64(&tv, id4, 16843024);
+
+    // StatsUpdateCounterArray(pca, &tv.perf_public_ctx);
+
+    // result &= (1 == tv.perf_public_ctx.head->value);
+    // result &= (256 == tv.perf_public_ctx.head->next->value);
+    // result &= (257 == tv.perf_public_ctx.head->next->next->value);
+    // result &= (16843024 == tv.perf_public_ctx.head->next->next->next->value);
+    // FAIL_IF_NOT(result);
+
+    // StatsReleaseCounters(tv.perf_public_ctx.head);
+    // StatsReleasePrivateThreadContext(pca);
+    // ThreadVars tv;
+    // StatsPrivateThreadContext *pca = NULL;
+
+    // memset(&tv, 0, sizeof(ThreadVars));
+    // SCLogNotice("Calling StatsInit");
+    // StatsInit();
+    // StatsInitCtxPreOutput();
+
+    // StatsSpawnThreads();
+
+    // uint16_t id1, id2, id3, id4, id5;
+
+    // id1 = RegisterCounter("Some value1", "Totals", &tv.perf_public_ctx);
+    // id2 = RegisterCounter("Another value", "Totals", &tv.perf_public_ctx);
+    // id3 = RegisterCounter("Basic value", "Totals", &tv.perf_public_ctx);
+    // id4 = RegisterCounter("Another unique value", "Totals", &tv.perf_public_ctx);
+    // id5 = RegisterCounter("Some value2", "Totals", &tv.perf_public_ctx);
+
+    // StatsGetAllCountersArray(&tv.perf_public_ctx, &tv.perf_private_ctx);
+    // pca = &tv.perf_private_ctx;
+
+    // StatsUpdateCounterArray(&tv.perf_private_ctx, &tv.perf_public_ctx);
+
+    // int r = StatsThreadRegister("Totals", &tv.perf_public_ctx);
+    // FAIL_IF(r == 0);
+
+    // StatsIncr(&tv, id1);
+    // StatsIncr(&tv, id2);
+    // StatsSetUI64(&tv, id3, 6468542);
+    // StatsSetUI64(&tv, id4, 9564856);
+    // StatsIncr(&tv, id5);
+
+    // FAIL_IF(counters_global_id == 0);
+    // // Write thread values to StatsOutput (which will also sort those out)
+    // StatsMgmtThread(&tv);
+    // StatsInitCtxPostOutput();
+
+    // FAIL_IF(stats_table.stats == NULL);
+
+    // StatsReleaseCounters(tv.perf_public_ctx.head);
+    // StatsReleasePrivateThreadContext(pca);
+
+    // FAIL_IF_NOT(strcmp(stats_table.stats[0].name, "Another unique value") == 0);
+    // FAIL_IF_NOT(strcmp(stats_table.stats[1].name, "Another value") == 0);
+    // FAIL_IF_NOT(strcmp(stats_table.stats[2].name, "Basic value") == 0);
+    // FAIL_IF_NOT(strcmp(stats_table.stats[3].name, "Some value1") == 0);
+    // FAIL_IF_NOT(strcmp(stats_table.stats[4].name, "Some value2") == 0);
+
+    // PASS;
+
     uint32_t nstats = 14;
     StatsRecord *test_table = SCCalloc(nstats, sizeof(StatsRecord));
 
-    StatsRecord test1 = { "stats-test", NULL, 10, 0 };
-    StatsRecord test2 = { "stats.field1.sub-field1", NULL, 11, 0 };
-    StatsRecord test3 = { "stats.field1.sub-field2", NULL, 14, 0 };
-    StatsRecord test4 = { "stats.field2", NULL, 11, 0 };
-    StatsRecord test5 = { "stats.field4", NULL, 11, 0 };
-    StatsRecord test6 = { "stats.field3", NULL, 11, 0 };
-    StatsRecord test7 = { "stats.field2.sub-field1", NULL, 11, 0 };
-    StatsRecord test8 = { "stats.field5.sub-field1", NULL, 11, 0 };
-    StatsRecord test9 = { "stats.field5.sub-field2", NULL, 11, 0 };
-    StatsRecord test10 = { "stats.field5.sub-field3", NULL, 11, 0 };
-    StatsRecord test11 = { "stats.field7.sub-field1", NULL, 11, 0 };
-    StatsRecord test12 = { "stats.field6.sub-field2", NULL, 11, 0 };
-    StatsRecord test13 = { "stats.field6.sub-field1", NULL, 11, 0 };
-    StatsRecord test14 = { "stats.field6.sub-field3", NULL, 11, 0 };
+    StatsRecord test1 = { "stats-test", "Total", 10, 0 };
+    StatsRecord test2 = { "stats.field1.sub-field1", "Total", 11, 0 };
+    StatsRecord test3 = { "stats.field1.sub-field2", "Total", 14, 0 };
+    StatsRecord test4 = { "stats.field2", "Total", 11, 0 };
+    StatsRecord test5 = { "stats.field4", "Total", 11, 0 };
+    StatsRecord test6 = { "stats.field3", "Total", 11, 0 };
+    StatsRecord test7 = { "stats.field2.sub-field1", "Total", 11, 0 };
+    StatsRecord test8 = { "stats.field5.sub-field1", "Thread01", 11, 0 };
+    StatsRecord test9 = { "stats.field5.sub-field2", "Thread01", 11, 0 };
+    StatsRecord test10 = { "stats.field5.sub-field3", "Thread01", 11, 0 };
+    StatsRecord test11 = { "stats.field7.sub-field1", "Thread02", 11, 0 };
+    StatsRecord test12 = { "stats.field6.sub-field2", "Thread02", 11, 0 };
+    StatsRecord test13 = { "stats.field6.sub-field1", "Thread02", 11, 0 };
+    StatsRecord test14 = { "stats.field6.sub-field3", "Thread02", 11, 0 };
 
     test_table[0] = test1;
     test_table[1] = test2;
@@ -1614,12 +1697,7 @@ static int StatsTestQSortStatsTable11(void)
     test_table[12] = test13;
     test_table[13] = test14;
 
-    for (int i = 0; i < (int)nstats; i++) {
-        SCLogDebug("-- Element %i of unsorted test table is %s", i, test_table[i].name);
-    }
-
-    /* Given a StatsRecord array, qsort it*/
-
+    /* Given a StatsRecord array, qsort it */
     qsort(test_table, nstats, sizeof(StatsRecord), StatsTableRecordsSortByName);
 
     FAIL_IF(strcmp(test_table[0].name, "stats-test") != 0);
@@ -1637,9 +1715,7 @@ static int StatsTestQSortStatsTable11(void)
     FAIL_IF(strcmp(test_table[12].name, "stats.field6.sub-field3") != 0);
     FAIL_IF(strcmp(test_table[13].name, "stats.field7.sub-field1") != 0);
 
-    for (int i = 0; i < (int)nstats; i++) {
-        SCLogDebug("-- Element %i of sorted test table is %s", i, test_table[i].name);
-    }
+    // FAIL_IF_NOT_NULL(StatsMgmtThread(&tv));
 
     PASS;
 }
