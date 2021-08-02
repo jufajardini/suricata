@@ -306,6 +306,9 @@ static int JsonStatsLogger(ThreadVars *tv, void *thread_data, const StatsTable *
     json_object_set_new(js, "timestamp", json_string(timebuf));
     json_object_set_new(js, "event_type", json_string("stats"));
 
+    /* sort stats table */
+    qsort(st->stats, st->nstats, sizeof(StatsRecord), StatsTableRecordsSortByName);
+
     json_t *js_stats = StatsToJSON(st, aft->statslog_ctx->flags);
     if (js_stats == NULL) {
         json_decref(js);
