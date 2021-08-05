@@ -64,12 +64,16 @@ typedef enum OutputEngineInfo_ {
 } OutputEngineInfo;
 
 typedef struct OutputStatsCtx_ {
+    // TODO delete LogFileCtx
     LogFileCtx *file_ctx;
+    OutputJsonCtx *eve_ctx;
     uint32_t flags; /** Store mode */
 } OutputStatsCtx;
 
 typedef struct JsonStatsLogThread_ {
     OutputStatsCtx *statslog_ctx;
+    OutputJsonThreadCtx *ctx;
+    // TODO these last two will be deleted
     LogFileCtx *file_ctx;
     MemBuffer *buffer;
 } JsonStatsLogThread;
@@ -169,6 +173,7 @@ TmEcode OutputEngineStatsRuleset(json_t **jdata) {
 static json_t *OutputStats2Json(json_t *js, const char *key)
 {
     void *iter;
+    SCLogNotice("In OutputStats2Json, key is %s", key);
 
     const char *dot = strchr(key, '.');
     if (dot == NULL)
@@ -177,10 +182,13 @@ static json_t *OutputStats2Json(json_t *js, const char *key)
         if (*(dot + 1) == '.' && *(dot + 2) != '\0')
             dot = strchr(dot + 2, '.');
     }
+    SCLogNotice("In OutputStats2Json, first dot is %s", dot);
 
     size_t predot_len = (dot - key) + 1;
     char s[predot_len];
+    SCLogNotice("In OutputStats2Json, predot_len is %lu", predot_len);
     strlcpy(s, key, predot_len);
+    SCLogNotice("In OutputStats2Json, s is %s", s);
 
     iter = json_object_iter_at(js, s);
     const char *s2 = strchr(dot+1, '.');
@@ -188,7 +196,6 @@ static json_t *OutputStats2Json(json_t *js, const char *key)
     json_t *value = json_object_iter_value(iter);
     if (value == NULL) {
         value = json_object();
-
         if (!strncmp(s, "detect", 6)) {
             json_t *js_engine = NULL;
 
@@ -234,8 +241,11 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
             if (strrchr(name, '.') != NULL) {
                 shortname = &name[strrchr(name, '.') - name + 1];
             }
+            SCLogNotice("StatsToJSON before calling OutputStats2Json");
             json_t *js_type = OutputStats2Json(js_stats, name);
             if (js_type != NULL) {
+                SCLogNotice("in StatsToJSON. name is %s", name);
+                SCLogNotice("in StatsToJSON. shortname is %s", shortname);
                 json_object_set_new(js_type, shortname,
                     json_integer(st->stats[u].value));
 
@@ -273,6 +283,7 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
                 json_t *js_type = OutputStats2Json(threads, str);
 
                 if (js_type != NULL) {
+                    SCLogNotice("in StatsToJSON, threads for. shortname is %s", shortname);
                     json_object_set_new(js_type, shortname, json_integer(st->tstats[u].value));
 
                     if (flags & JSON_STATS_DELTAS) {
@@ -290,6 +301,78 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
     return js_stats;
 }
 
+// TODO decide if I really need this jb parameter, here
+// 'key' is the value after the dot
+static const char *NewOutputStats2Json(JsonBuilder *jb, const char *key)
+{
+    SCLogNotice("*************** In NewOutputStats2Json ********* key[%s]", key);
+
+    const char *child_str = NULL;
+    const char *dot = strchr(key, '.');
+    if (dot == NULL) {
+        SCLogNotice("dot is NULL, returning key [%s]", key);
+        return key;
+    } else if (strlen(dot) > 2) {
+        size_t predot_len = (dot - key) + 1;
+        char s[predot_len];
+        SCLogNotice("In OutputStats2Json, predot_len is %lu", predot_len);
+        strlcpy(s, key, predot_len);
+        SCLogNotice("In OutputStats2Json, s is %s, opening jb object", s);
+        jb_open_object(jb, s);
+        SCLogNotice("--------------------- *(dot+1) is %s", dot + 1);
+        SCLogNotice("-------------- Key is %s", key);
+        if (*(dot) == '.' && *(dot + 1) != '\0') {
+            child_str = strchr(dot + 1, '.');
+            SCLogNotice("--------------------- dot NOW is %s", dot);
+            if (child_str == NULL) {
+                // if there are no further fields, this is the chiled counter
+                SCLogNotice("Returning dot");
+                return (dot + 1);
+            }
+
+            const char *child_key = NewOutputStats2Json(jb, dot + 1);
+
+            SCLogNotice("In OutputStats2Json, just called NewOutputStats2Json, child_key is %s",
+                    child_key);
+            return child_key;
+        }
+        jb_close(jb);
+        // TODO handle "detect" fields here, later
+    }
+    return child_str;
+}
+
+// JsonBuilder *StatsToJBuilder(const StatsTable *st, uint8_t flags)
+// {
+//     const char delta_suffix[] = "_delta";
+//     struct timeval tval;
+//     gettimeofday(&tval, NULL);
+
+//     JsonBuilder *jb = jb_new_object();
+//     if (unlikely(jb == NULL)) {
+//         return NULL;
+//     }
+
+//     /* Uptime, in seconds */
+//     double up_time_d = difftime(tval.tv_sec, st->start_time);
+//     jb_set_int(jb, "uptime", (int)up_time_d);
+
+//     uint32_t u = 0;
+//     if ( flags & JSON_STATS_TOTALS) {
+//         for (u = 0; u < st->nstats; u++) {
+//             if (st->stats[u].name == NULL)
+//                 continue;
+//             const char *name = st->stats[u].name;
+//             const char *shortname = name;
+//             if (strrchr(name, '.') != NULL) {
+//                 shortname = &name[strrchr(name, '.') - name +1];
+//             }
+//             jb_open_object(jb, name);
+
+//         }
+//     }
+// }
+
 static int JsonStatsLogger(ThreadVars *tv, void *thread_data, const StatsTable *st)
 {
     SCEnter();
@@ -298,34 +381,27 @@ static int JsonStatsLogger(ThreadVars *tv, void *thread_data, const StatsTable *
     struct timeval tval;
     gettimeofday(&tval, NULL);
 
-    json_t *js = json_object();
-    if (unlikely(js == NULL))
-        return 0;
     char timebuf[64];
     CreateIsoTimeString(&tval, timebuf, sizeof(timebuf));
-    json_object_set_new(js, "timestamp", json_string(timebuf));
-    json_object_set_new(js, "event_type", json_string("stats"));
-
-    /* sort stats table */
-    qsort(st->stats, st->nstats, sizeof(StatsRecord), StatsTableRecordsSortByName);
-
-    json_t *js_stats = StatsToJSON(st, aft->statslog_ctx->flags);
-    if (js_stats == NULL) {
-        json_decref(js);
-        return 0;
-    }
-
-    json_object_set_new(js, "stats", js_stats);
-
-    OutputJSONBuffer(js, aft->file_ctx, &aft->buffer);
-    MemBufferReset(aft->buffer);
-
-    json_object_clear(js_stats);
-    json_object_del(js, "stats");
-    json_object_clear(js);
-    json_decref(js);
+    JsonBuilder *jb = jb_new_object();
+    jb_set_string(jb, "timestamp)", timebuf);
+    JB_SET_STRING(jb, "event_type", "stats");
+    jb_open_object(jb, "stats");
+    // TODO this commented code was but a test. Now I must create the function which will actually
+    // go over the stats table and call NewOutputStats2Json from there const char *test =
+    // NewOutputStats2Json(jb, "app_layer.tx.ftp-data"); if (test != NULL) {
+    //     jb_set_uint(jb, test, 1238);
+    //     // TODO this is bad and ugly, I must change this
+    //     jb_close(jb);
+    //     jb_close(jb);
+    // }
+    jb_close(jb);
+    OutputJsonBuilderBuffer(jb, aft->ctx);
+    jb_free(jb);
 
     SCReturnInt(0);
+
+    // TODO should I have an error section?
 }
 
 static TmEcode JsonStatsLogThreadInit(ThreadVars *t, const void *initdata, void **data)
@@ -334,22 +410,21 @@ static TmEcode JsonStatsLogThreadInit(ThreadVars *t, const void *initdata, void 
     if (unlikely(aft == NULL))
         return TM_ECODE_FAILED;
 
+    SCLogNotice("Suri called JsonStatsLogThreadInit");
+
     if(initdata == NULL)
     {
-        SCLogDebug("Error getting context for EveLogStats.  \"initdata\" argument NULL");
-        goto error_exit;
-    }
-
-    aft->buffer = MemBufferCreateNew(JSON_OUTPUT_BUFFER_SIZE);
-    if (aft->buffer == NULL) {
+        SCLogNotice("Error getting context for EveLogStats.  \"initdata\" argument NULL");
         goto error_exit;
     }
 
     /* Use the Output Context (file pointer and mutex) */
     aft->statslog_ctx = ((OutputCtx *)initdata)->data;
 
-    aft->file_ctx = LogFileEnsureExists(aft->statslog_ctx->file_ctx, t->id);
-    if (!aft->file_ctx) {
+    SCLogNotice("Suri will call CreateEveThreadCtx");
+
+    aft->ctx = CreateEveThreadCtx(t, aft->statslog_ctx->eve_ctx);
+    if (!aft->ctx) {
         goto error_exit;
     }
 
@@ -357,9 +432,6 @@ static TmEcode JsonStatsLogThreadInit(ThreadVars *t, const void *initdata, void 
     return TM_ECODE_OK;
 
 error_exit:
-    if (aft->buffer != NULL) {
-        MemBufferFree(aft->buffer);
-    }
     SCFree(aft);
     return TM_ECODE_FAILED;
 }
@@ -371,7 +443,7 @@ static TmEcode JsonStatsLogThreadDeinit(ThreadVars *t, void *data)
         return TM_ECODE_OK;
     }
 
-    MemBufferFree(aft->buffer);
+    FreeEveThreadCtx(aft->ctx);
 
     /* clear memory */
     memset(aft, 0, sizeof(JsonStatsLogThread));
@@ -391,6 +463,7 @@ static OutputInitResult OutputStatsLogInitSub(ConfNode *conf, OutputCtx *parent_
 {
     OutputInitResult result = { NULL, false };
     OutputJsonCtx *ajt = parent_ctx->data;
+    SCLogNotice("Suri called OutputStatsLogInitSub");
 
     if (!StatsEnabled()) {
         SCLogError(SC_ERR_STATS_LOG_GENERIC,
@@ -444,7 +517,7 @@ static OutputInitResult OutputStatsLogInitSub(ConfNode *conf, OutputCtx *parent_
         return result;
     }
 
-    stats_ctx->file_ctx = ajt->file_ctx;
+    stats_ctx->eve_ctx = ajt;
 
     output_ctx->data = stats_ctx;
     output_ctx->DeInit = OutputStatsLogDeinitSub;
