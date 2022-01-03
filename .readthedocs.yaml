@@ -3,7 +3,16 @@ version: 2
 
 python:
   version: "3.8"
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - sphinxcontrib-mscgen
 
   # Use an empty install section to avoid RTD from picking up a non-python
   # requirements.txt file.
   install: []
+
+build:
+  apt_packages:
+    - mscgen
