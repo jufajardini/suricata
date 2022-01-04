@@ -336,6 +336,34 @@ A completed transaction for the template looks like this:
        --- [ label = "Transaction Completed" ];
    }
 
+Another test:
+
+.. mscgen::
+
+   msc {
+      hscale = "0.5";
+
+      a,b,c;
+
+      a->b [ label = "ab()" ] ;
+      b->c [ label = "bc(TRUE)"];
+      c=>c [ label = "process()" ];
+   }
+
+
+A test:
+
+   .. msc::
+
+        hscale = "0.5";
+
+        a, b, c;
+
+        a->b [ label = "ab()" ] ;
+        b->c [ label = "bc(TRUE)"];
+        c=>c [ label = "process()" ];
+
+
 .. image:: diagrams/TemplateTransaction.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server, labeled "Request". An arrow below that first one goes from Server to Client.
