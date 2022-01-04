@@ -234,13 +234,80 @@ A DNS transaction in Suricata can be considered unidirectional:
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server, labeled "DNS Request". After that, there is a dotted line labeled "Transaction Completed".
 
+.. mscgen::
+
+   msc {
+       # Chart Options
+       arcgradient = "10";
+   
+       # Entities
+       a [ label = "Client" ], b [ label = "Server" ];
+   
+       # Message Flow
+       a =>> b [ label = "DNS Request" ];
+       --- [ label = "Transaction 1 Completed" ];
+       |||;
+       b =>> a [ label = "DNS Response" ];
+       --- [ label = "Transaction 2 Completed" ];
+   }
+
 An HTTP2 transaction is an example of a bidirectional transaction, in Suricata (note that, while HTTP2 may have multiple streams, those are mapped to transactions in Suricata. They run in parallel, scenario not shown in this Sequence Diagram - which shows one transaction, only):
 
 .. image:: diagrams/HTTP2BidirectionalTransaction.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server labeled "Request" and below that an arrow going from Server to Client labeled "Response". Below those arrows, a dotted line indicates that the transaction is completed.
 
+.. mscgen::
+
+   msc {
+   
+       # Reference: https://tools.ietf.org/html/rfc7540#section-8.1
+       # Chart options
+       arcgradient = "10";
+   
+       # Entities
+       a [ label = "Client" ], b [ label = "Server" ];
+   
+       # Message flow
+       a =>> b [ label = "Request" ];
+       b =>> a [ label = "Response" ];
+       |||;
+       --- [ label = "Transaction Completed" ];
+   }
+
 A TLS Handshake is a more complex example, where several messages are exchanged before the transaction is considered completed:
+
+.. mscgen::
+
+   msc {
+       # Chart Options
+       arcgradient = "10";
+   
+       # Entities
+       a [ label = "Client" ], b [ label = "Server" ];
+   
+       # Message Flow
+       # TLS_STATE_IN_PROGRESS = 0,
+       a abox b [ label = "TLS_STATE_IN_PROGRESS" ];
+       a =>> b [ label = "ClientHello" ];
+       b =>> a [ label = "ServerHello" ];
+       b =>> a [ label = "ServerCertificate" ];
+       b =>> a [ label = "ServerHello Done" ];
+   
+       a =>> b [ label = "ClientCertificate" ];
+       # TLS_STATE_CERT_READY = 1,
+       a abox b [ label = "TLS_STATE_CERT_READY" ];
+       a =>> b [ label = "ClientKeyExchange" ];
+   
+       a =>> b [ label = "Finished" ];
+       b =>> a [ label = "Finished" ];
+       # TLS_HANDSHAKE_DONE = 2,
+       a abox b [ label = "TLS_HANDSHAKE_DONE" ];
+       ...;
+       # TLS_STATE_FINISHED = 3
+       a abox b [ label = "TLS_STATE_FINISHED" ];
+       --- [ label = "Transaction Completed" ];
+   }
 
 .. image:: diagrams/TlsHandshake.png
   :width: 600
@@ -252,6 +319,22 @@ Template Protocol
 Suricata has a template protocol for educational purposes, which has simple bidirectional transactions.
 
 A completed transaction for the template looks like this:
+
+.. mscgen::
+
+   msc {
+       # Chart Options
+       arcgradient = "10";
+   
+       # Entities
+       a [ label = "Client" ], b [ label = "Server" ];
+   
+       # Message Flow
+       a =>> b [ label = "Request ('12:HelloWorld!')" ];
+       b =>> a [ label = "Response ('3:Bye')" ];
+       |||;
+       --- [ label = "Transaction Completed" ];
+   }
 
 .. image:: diagrams/TemplateTransaction.png
   :width: 600
