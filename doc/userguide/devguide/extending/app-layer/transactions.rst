@@ -336,6 +336,7 @@ A completed transaction for the template looks like this:
        --- [ label = "Transaction Completed" ];
    }
 
+Let's add more text here to ensure this has been updated.
 Another test:
 
 .. mscgen::
