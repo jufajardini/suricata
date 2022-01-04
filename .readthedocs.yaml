@@ -8,4 +8,3 @@ python:
   # requirements.txt file.
   install:
     - requirements: doc/userguide/requirements.txt
-
