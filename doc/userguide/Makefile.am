@@ -46,7 +46,6 @@ SPHINX_BUILD = sphinx-build -q
 BUILD_IMG    = ./devguide/tools/generate-images.sh
 
 html:
-	$(BUILD_IMG)
 	sysconfdir=$(sysconfdir) \
 	localstatedir=$(localstatedir) \
 	version=$(PACKAGE_VERSION) \
@@ -58,7 +57,7 @@ _build/latex/Suricata.pdf:
 	sysconfdir=$(sysconfdir) \
 	localstatedir=$(localstatedir) \
 	version=$(PACKAGE_VERSION) \
-		$(SPHINX_BUILD) -W -b latex -d _build/doctrees \
+		$(SPHINX_BUILD) -W -b latex -t pdf -d _build/doctrees \
 		$(top_srcdir)/doc/userguide _build/latex
 # The Sphinx generated Makefile is GNU Make specific, so just do what
 # it does here - yes, multiple passes of pdflatex is required.

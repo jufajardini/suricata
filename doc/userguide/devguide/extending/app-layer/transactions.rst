@@ -230,13 +230,14 @@ Sequence Diagrams
 
 A DNS transaction in Suricata can be considered unidirectional:
 
+.. only:: (latex or pdf or epub or devhelp)
 .. image:: diagrams/DnsUnidirectionalTransactions.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server, labeled "DNS Request". After that, there is a dotted line labeled "Transaction Completed".
 
-.. mscgen::
+.. only:: html and not( pdf )
+.. msc::
 
-   msc {
        # Chart Options
        arcgradient = "10";
    
@@ -249,18 +250,17 @@ A DNS transaction in Suricata can be considered unidirectional:
        |||;
        b =>> a [ label = "DNS Response" ];
        --- [ label = "Transaction 2 Completed" ];
-   }
 
 An HTTP2 transaction is an example of a bidirectional transaction, in Suricata (note that, while HTTP2 may have multiple streams, those are mapped to transactions in Suricata. They run in parallel, scenario not shown in this Sequence Diagram - which shows one transaction, only):
 
+.. only:: (latex or pdf or epub or devhelp)
 .. image:: diagrams/HTTP2BidirectionalTransaction.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server labeled "Request" and below that an arrow going from Server to Client labeled "Response". Below those arrows, a dotted line indicates that the transaction is completed.
 
-.. mscgen::
+.. only:: html
+.. msc::
 
-   msc {
-   
        # Reference: https://tools.ietf.org/html/rfc7540#section-8.1
        # Chart options
        arcgradient = "10";
@@ -273,13 +273,12 @@ An HTTP2 transaction is an example of a bidirectional transaction, in Suricata (
        b =>> a [ label = "Response" ];
        |||;
        --- [ label = "Transaction Completed" ];
-   }
 
 A TLS Handshake is a more complex example, where several messages are exchanged before the transaction is considered completed:
 
-.. mscgen::
+.. only:: html
+.. msc::
 
-   msc {
        # Chart Options
        arcgradient = "10";
    
@@ -307,8 +306,8 @@ A TLS Handshake is a more complex example, where several messages are exchanged 
        # TLS_STATE_FINISHED = 3
        a abox b [ label = "TLS_STATE_FINISHED" ];
        --- [ label = "Transaction Completed" ];
-   }
 
+.. only:: (latex or pdf or epub or devhelp)
 .. image:: diagrams/TlsHandshake.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server labeled "ClientHello" and below that an arrow going from Server to Client labeled "ServerHello". Below those arrows, several more follow from Server to Client and vice-versa, before a dotted line indicates that the transaction is finally completed.
@@ -320,9 +319,9 @@ Suricata has a template protocol for educational purposes, which has simple bidi
 
 A completed transaction for the template looks like this:
 
-.. mscgen::
+.. only:: html and not(pdf)
+.. msc::
 
-   msc {
        # Chart Options
        arcgradient = "10";
    
@@ -334,37 +333,8 @@ A completed transaction for the template looks like this:
        b =>> a [ label = "Response ('3:Bye')" ];
        |||;
        --- [ label = "Transaction Completed" ];
-   }
 
-Let's add more text here to ensure this has been updated.
-Another test:
-
-.. mscgen::
-
-   msc {
-      hscale = "0.5";
-
-      a,b,c;
-
-      a->b [ label = "ab()" ] ;
-      b->c [ label = "bc(TRUE)"];
-      c=>c [ label = "process()" ];
-   }
-
-
-A test:
-
-   .. msc::
-
-        hscale = "0.5";
-
-        a, b, c;
-
-        a->b [ label = "ab()" ] ;
-        b->c [ label = "bc(TRUE)"];
-        c=>c [ label = "process()" ];
-
-
+.. only:: (latex or pdf or epub or devhelp)
 .. image:: diagrams/TemplateTransaction.png
   :width: 600
   :alt: A sequence diagram with two entities, Client and Server, with an arrow going from the Client to the Server, labeled "Request". An arrow below that first one goes from Server to Client.
