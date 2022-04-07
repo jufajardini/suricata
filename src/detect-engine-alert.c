@@ -174,6 +174,20 @@ static void PacketAlertRemove(Packet *p, uint16_t pos)
 }
 
 /**
+ * \brief Set signature action to packet
+ */
+static void PacketSetSignatureActions(Packet *p, const Signature *s, const uint8_t alert_flags)
+{
+    if (s->action & ACTION_DROP) {
+        if (p->alerts.drop.action == 0) {
+            p->alerts.drop.num = s->num;
+            p->alerts.drop.action = s->action;
+            p->alerts.drop.s = (Signature *)s;
+        }
+    }
+}
+
+/**
  * \brief calculate correct position for alert queue insertion, do memmove if needed
  *
  * \param p packet
@@ -256,6 +270,7 @@ int PacketAlertAppend(DetectEngineThreadCtx *det_ctx, const Signature *s,
         /* Update the count */
         p->alerts.cnt++;
     } else {
+        const Signature *discarded = (Signature *)s;
         SCLogDebug("Reached packet_alert_max.");
         /* If we reach packet_alert_max, remove lower priority
          * rules and keep higher priority ones.
@@ -269,6 +284,7 @@ int PacketAlertAppend(DetectEngineThreadCtx *det_ctx, const Signature *s,
                        ") in packet %" PRIu64 "",
                     p->alerts.alerts[p->alerts.cnt - 1].s->id,
                     p->alerts.alerts[p->alerts.cnt - 1].num, s->id, s->num, p->pcap_cnt);
+            discarded = p->alerts.alerts[p->alerts.cnt - 1].s;
             PacketAlertInsertPos(det_ctx, s, p, tx_id, flags, (p->alerts.cnt - 1));
         } else if (num_diff < -1) {
             /* If the new signature's internal id adjacent to the last one in the
@@ -278,6 +294,7 @@ int PacketAlertAppend(DetectEngineThreadCtx *det_ctx, const Signature *s,
                        ") with higher priority signature %" PRIu32 " (%" PRIu32
                        ") in packet %" PRIu64 "",
                     p->alerts.alerts[i].s->id, p->alerts.alerts[i].num, s->id, s->num, p->pcap_cnt);
+            discarded = p->alerts.alerts[i].s;
             PacketAlertInsertPos(det_ctx, s, p, tx_id, flags, i);
         }
         /* Do not update p->alerts.cnt here, already at max */
@@ -285,7 +302,8 @@ int PacketAlertAppend(DetectEngineThreadCtx *det_ctx, const Signature *s,
         discarded */
         p->alerts.discarded++;
 
-        // TODO how do we take care of alerts that have drop action, in this case?
+        /* Make sure we don't miss a DROP action from the discarded alert */
+        PacketSetSignatureActions(p, discarded, flags);
     }
 
     return 0;
@@ -315,17 +333,16 @@ static inline void RuleActionToFlow(const uint8_t action, Flow *f)
 
 /** \brief Apply action(s) and Set 'drop' sig info,
  *         if applicable */
-static void PacketApplySignatureActions(Packet *p, const Signature *s, const uint8_t alert_flags)
+static void PacketFlowApplySignatureActions(
+        Packet *p, const Signature *s, const uint8_t alert_flags)
 {
     SCLogDebug("packet %" PRIu64 " sid %u action %02x alert_flags %02x", p->pcap_cnt, s->id,
             s->action, alert_flags);
     PacketUpdateAction(p, s->action);
 
     if (s->action & ACTION_DROP) {
-        if (p->alerts.drop.action == 0) {
-            p->alerts.drop.num = s->num;
-            p->alerts.drop.action = s->action;
-            p->alerts.drop.s = (Signature *)s;
+        if (p->alerts.discarded == 0) {
+            PacketSetSignatureActions(p, s, alert_flags);
         }
         if ((p->flow != NULL) && (alert_flags & PACKET_ALERT_FLAG_APPLY_ACTION_TO_FLOW)) {
             RuleActionToFlow(s->action, p->flow);
@@ -389,7 +406,7 @@ void PacketAlertFinalize(DetectEngineCtx *de_ctx, DetectEngineThreadCtx *det_ctx
             }
 
             /* set actions on packet */
-            PacketApplySignatureActions(p, p->alerts.alerts[i].s, p->alerts.alerts[i].flags);
+            PacketFlowApplySignatureActions(p, p->alerts.alerts[i].s, p->alerts.alerts[i].flags);
 
             if (PacketTestAction(p, ACTION_PASS)) {
                 /* Ok, reset the alert cnt to end in the previous of pass
