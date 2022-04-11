@@ -183,6 +183,7 @@ static void PacketSetSignatureActions(Packet *p, const Signature *s, const uint8
             p->alerts.drop.num = s->num;
             p->alerts.drop.action = s->action;
             p->alerts.drop.s = (Signature *)s;
+            p->alerts.drop.flags = alert_flags;
         }
     }
 }
@@ -331,6 +332,21 @@ static inline void RuleActionToFlow(const uint8_t action, Flow *f)
     }
 }
 
+/**
+ * \brief Apply and set 'drop' action and info if a drop alert was discarded
+ */
+static void PacketFlowSetDropAction(Packet *p, const Signature *s, const uint8_t alert_flags)
+{
+    SCLogDebug("packet %" PRIu64 " sid %u action %02x alert_flags %02x", p->pcap_cnt, s->id,
+            s->action, alert_flags);
+
+    PacketUpdateAction(p, p->alerts.drop.action);
+    if ((p->flow != NULL) && (alert_flags & PACKET_ALERT_FLAG_APPLY_ACTION_TO_FLOW)) {
+        RuleActionToFlow(s->action, p->flow);
+    }
+    // TODO should we also worry about discarded pass rules ?
+}
+
 /** \brief Apply action(s) and Set 'drop' sig info,
  *         if applicable */
 static void PacketFlowApplySignatureActions(
@@ -342,6 +358,8 @@ static void PacketFlowApplySignatureActions(
 
     if (s->action & ACTION_DROP) {
         if (p->alerts.discarded == 0) {
+            // TODO there's a bug here, we can't assume the drop action is in the discarded
+            // alert!!!!
             PacketSetSignatureActions(p, s, alert_flags);
         }
         if ((p->flow != NULL) && (alert_flags & PACKET_ALERT_FLAG_APPLY_ACTION_TO_FLOW)) {
@@ -414,6 +432,20 @@ void PacketAlertFinalize(DetectEngineCtx *de_ctx, DetectEngineThreadCtx *det_ctx
                 p->alerts.cnt = i;
                 break;
             }
+        }
+
+        if (p->alerts.drop.action & ACTION_DROP) {
+            if ((p->alerts.drop.flags &
+                        (PACKET_ALERT_FLAG_STATE_MATCH | PACKET_ALERT_FLAG_STREAM_MATCH)) ||
+                    (p->alerts.drop.s->flags &
+                            (SIG_FLAG_IPONLY | SIG_FLAG_PDONLY | SIG_FLAG_APPLAYER))) {
+                p->alerts.drop.flags |= PACKET_ALERT_FLAG_APPLY_ACTION_TO_FLOW;
+                SCLogDebug("packet %" PRIu64 " sid %u action %02x alert_flags %02x (set "
+                           "PACKET_ALERT_FLAG_APPLY_ACTION_TO_FLOW",
+                        p->pcap_cnt, p->alerts.drop.s->id, p->alerts.drop.s->action,
+                        p->alerts.drop.flags);
+            }
+            PacketFlowSetDropAction(p, p->alerts.drop.s, p->alerts.drop.flags);
         }
 
         /* Thresholding removes this alert */
