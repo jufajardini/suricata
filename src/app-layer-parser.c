@@ -1742,6 +1742,7 @@ void AppLayerParserRegisterProtocolParsers(void)
     RegisterRFBParsers();
     RegisterMQTTParsers();
     rs_pgsql_register_parser();
+    rs_stun_register_parser();
     RegisterTemplateParsers();
     RegisterRdpParsers();
     RegisterHTTP2Parsers();

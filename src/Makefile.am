@@ -428,6 +428,7 @@ noinst_HEADERS = \
 	output-json-snmp.h \
 	output-json-ssh.h \
 	output-json-stats.h \
+	output-json-stun.h \
 	output-json-template.h \
 	output-json-template-rust.h \
 	output-json-tftp.h \
@@ -1037,6 +1038,7 @@ libsuricata_c_a_SOURCES = \
 	output-json-snmp.c \
 	output-json-ssh.c \
 	output-json-stats.c \
+	output-json-stun.c \
 	output-json-template.c \
 	output-json-template-rust.c \
 	output-json-tftp.c \

@@ -232,6 +232,7 @@
 #include "detect-quic-cyu-hash.h"
 #include "detect-quic-cyu-string.h"
 
+#include "detect-stun-message_type.h"
 #include "detect-template-buffer.h"
 #include "detect-bypass.h"
 #include "detect-ftpdata.h"
@@ -678,6 +679,7 @@ void SigTableSetup(void)
     DetectQuicCyuHashRegister();
     DetectQuicCyuStringRegister();
 
+    /*DetectStunmessage_typeRegister();*/
     DetectTemplateBufferRegister();
     DetectBypassRegister();
     DetectConfigRegister();

@@ -52,7 +52,6 @@
 #include "output-json-stun.h"
 #include "rust.h"
 
-#if 0
 typedef struct LogStunFileCtx_ {
     uint32_t flags;
     OutputJsonCtx *eve_ctx;
@@ -172,5 +171,3 @@ void JsonStunLogRegister(void)
 
     SCLogNotice("Stun JSON logger registered.");
 }
-
-#endif

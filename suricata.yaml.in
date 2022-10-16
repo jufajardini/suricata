@@ -156,6 +156,7 @@ outputs:
         header: X-Forwarded-For
 
       types:
+        - stun
         - alert:
             # payload: yes             # enable dumping payload in Base64
             # payload-buffer-size: 4kb # max size of payload buffer to output in eve-log
@@ -1078,6 +1079,9 @@ app-layer:
       enabled: yes
 
     sip:
+      #enabled: yes
+    
+    stun:
       #enabled: yes
 
 # Limit for the maximum number of asn1 frames to decode (default 256)
