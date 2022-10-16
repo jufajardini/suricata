@@ -220,6 +220,7 @@
 #include "detect-quic-cyu-string.h"
 #include "detect-ja4-hash.h"
 
+#include "detect-stun-message-type.h"
 #include "detect-bypass.h"
 #include "detect-ftpdata.h"
 #include "detect-engine-content-inspection.h"
@@ -684,6 +685,7 @@ void SigTableSetup(void)
     DetectQuicCyuStringRegister();
     DetectJa4HashRegister();
 
+    /*DetectStunmessage_typeRegister();*/
     DetectBypassRegister();
     DetectConfigRegister();
 

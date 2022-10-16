@@ -64,6 +64,7 @@ const AppProtoStringTuple AppProtoStrings[ALPROTO_MAX] = {
     { ALPROTO_LDAP, "ldap" },
     { ALPROTO_DOH2, "doh2" },
     { ALPROTO_TEMPLATE, "template" },
+    { ALPROTO_STUN, "stun" },
     { ALPROTO_RDP, "rdp" },
     { ALPROTO_HTTP2, "http2" },
     { ALPROTO_BITTORRENT_DHT, "bittorrent-dht" },

@@ -161,6 +161,7 @@ outputs:
         header: X-Forwarded-For
 
       types:
+        - stun
         - alert:
             # payload: yes             # enable dumping payload in Base64
             # payload-buffer-size: 4 KiB  # max size of payload buffer to output in eve-log
@@ -1186,6 +1187,9 @@ app-layer:
       enabled: yes
 
     sip:
+      #enabled: yes
+
+    stun:
       #enabled: yes
 
     ldap:
