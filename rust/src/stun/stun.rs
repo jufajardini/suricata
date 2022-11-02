@@ -22,12 +22,34 @@ use crate::applayer::{self, *};
 use std::ffi::CString;
 use nom7::Err;
 use super::parser::{self, StunMessage};
-// use crate::applayerstun::parser::StunMessage;
 
 static mut ALPROTO_STUN: AppProto = ALPROTO_UNKNOWN;
 
 #[derive(AppLayerEvent)]
 enum StunEvent {}
+
+// // STUN methods (aka message types): hex number range 0x0000-0x0FF
+// pub const STUN_MESSAGE_TYPE_RESERVED                   : u16 = 0x0000;
+// pub const STUN_MSG_TYPE_BINDING_REQUEST                : u16 = 0x0001;
+// pub const STUN_MSG_TYPE_BINDING_RESPONSE               : u16 = 0x0101;
+// pub const STUN_MSG_TYPE_BINDING_ERROR_RESPONSE         : u16 = 0x0111;
+// //pub const STUN_MSG_TYPE_SHARED_SECRET_REQUEST          : u16 = 0x0002; // Reserved (RFC 8489)
+// pub const STUN_MSG_TYPE_SHARED_SECRET_RESPONSE         : u16 = 0x0102;
+// pub const STUN_MSG_TYPE_SHARED_SECRET_ERROR_RESPONSE   : u16 = 0x0112;
+
+// STUN message attributes (aka STUN attributes): hex number range 0x0000-0xFFFF
+// pub const STUN_MSG_ATTRIBUTE_MAPPED_ADDRESS            : u16 = 0x0001;
+// //pub const STUN_MSG_ATTRIBUTE_RESPONSE_ADDRESS          : u16 = 0x0002; // deprecated
+// //pub const STUN_MSG_ATTRIBUTE_CHANGE_REQUEST            : u16 = 0x0003; // deprecated
+// //pub const STUN_MSG_ATTRIBUTE_SOURCE_ADDRESS            : u16 = 0x0004; // deprecated
+// //pub const STUN_MSG_ATTRIBUTE_CHANGED_ADDRESS           : u16 = 0x0005; //deprecated
+// pub const STUN_MSG_ATTRIBUTE_USERNAME                  : u16 = 0x0006;
+// pub const STUN_MSG_ATTRIBUTE_PASSWORD                  : u16 = 0x0007;
+// pub const STUN_MSG_ATTRIBUTE_MESSAGE_INTEGRITY         : u16 = 0x0008;
+// pub const STUN_MSG_ATTRIBUTE_ERROR_CODE                : u16 = 0x0009;
+// pub const STUN_MSG_ATTRIBUTE_UNKNOWN_ATTRIBUTES        : u16 = 0x000a;
+// pub const STUN_MSG_ATTRIBUTE_REFLECTED_FORM            : u16 = 0x000b;
+
 
 #[derive(Debug)]
 pub struct StunTransaction {
@@ -153,7 +175,7 @@ impl StunState {
                 Ok((rem, request)) => {
                     start = rem;
 
-                    SCLogNotice!("Request: {:?}", request);
+                    SCLogDebug!("Request: {:?}", request);
                     let mut tx = self.new_tx();
                     tx.request = Some(request);
                     self.transactions.push_back(tx);
@@ -202,9 +224,9 @@ impl StunState {
                     match self.find_request() {
                         Some(tx) => {
                             tx.response = Some(response);
-                            SCLogNotice!("Found response for request:");
-                            SCLogNotice!("- Request: {:?}", tx.request);
-                            SCLogNotice!("- Response: {:?}", tx.response);
+                            SCLogDebug!("Found response for request:");
+                            SCLogDebug!("- Request: {:?}", tx.request);
+                            SCLogDebug!("- Response: {:?}", tx.response);
                         }
                         None => {}
                     }

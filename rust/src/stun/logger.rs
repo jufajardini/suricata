@@ -1,4 +1,4 @@
-/* Copyright (C) 2018 Open Information Security Foundation
+/* Copyright (C) 2022 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -21,10 +21,10 @@ use std;
 
 fn log_stun(tx: &StunTransaction, js: &mut JsonBuilder) -> Result<(), JsonError> {
     if let Some(ref request) = tx.request {
-        js.set_string("request", request)?;
+        js.set_string("message_type", &request.message_type.to_str())?;
     }
     if let Some(ref response) = tx.response {
-        js.set_string("response", response)?;
+        js.set_string("message_type", &response.message_type.to_str())?;
     }
     Ok(())
 }

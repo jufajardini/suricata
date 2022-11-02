@@ -65,7 +65,7 @@ typedef struct LogStunLogThread_ {
 static int JsonStunLogger(ThreadVars *tv, void *thread_data, const Packet *p, Flow *f, void *state,
         void *tx, uint64_t tx_id)
 {
-    SCLogNotice("JsonStunLogger");
+    SCLogDebug("JsonStunLogger");
     LogStunLogThread *thread = thread_data;
 
     JsonBuilder *js =
@@ -118,7 +118,7 @@ static OutputInitResult OutputStunLogInitSub(ConfNode *conf, OutputCtx *parent_c
 
     SCLogNotice("Stun log sub-module initialized.");
 
-    AppLayerParserRegisterLogger(IPPROTO_TCP, ALPROTO_STUN);
+    AppLayerParserRegisterLogger(IPPROTO_UDP, ALPROTO_STUN);
 
     result.ctx = output_ctx;
     result.ok = true;
