@@ -21,10 +21,25 @@ use std;
 
 fn log_stun(tx: &StunTransaction, js: &mut JsonBuilder) -> Result<(), JsonError> {
     if let Some(ref request) = tx.request {
+        SCLogDebug!("inside log request");
+        js.open_object("request")?;
         js.set_string("message_type", &request.message_type.to_str())?;
+        js.close()?;
     }
     if let Some(ref response) = tx.response {
+        js.open_object("response")?;
         js.set_string("message_type", &response.message_type.to_str())?;
+        if let Some(attributes) = &response.attrs {
+            js.open_object("attributes")?;
+            for attribute in attributes {
+                js.set_string("attribute", attribute.attr_type.to_str())?;
+                if let Some(val) = &attribute.value {
+                    js.set_string_from_bytes("value", val)?;
+                }
+            }
+            js.close()?;
+        }
+        js.close()?;
     }
     Ok(())
 }
