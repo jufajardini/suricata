@@ -45,6 +45,7 @@
 #include "output-json.h"
 #include "output-json-alert.h"
 #include "output-json-drop.h"
+#include "output-json-verdict.h"
 
 #include "util-unittest.h"
 #include "util-unittest-helper.h"

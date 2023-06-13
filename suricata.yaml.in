@@ -265,6 +265,20 @@ outputs:
             # Enable logging the final action taken on a packet by the engine
             # (will show more information in case of a drop caused by 'reject')
             # verdict: yes
+
+        # Enable logging the final action taken on a packet by the engine
+        # (e.g: the alert may have action 'allowed' but the verdict be
+        # 'drop' due to another alert. That's the engine's verdict)
+        # Verdict packet's final verdict (based on existing alerts for it)
+        #- verdict:
+        #    enabled: no
+        #    drop: start      # start or all: 'start' logs only the verdict on
+        #                     # the first packet dropped. 'all' logs for each
+        #                     # verdict
+        #    pass: start      # start or all: 'start' logs only the verdict on
+        #                     # the first packet dropped. 'all' logs for each
+        #                     # verdict
+
         - smtp:
             #extended: yes # enable this for extended logging information
             # this includes: bcc, message-id, subject, x_mailer, user-agent
