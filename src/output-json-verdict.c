@@ -39,6 +39,11 @@
 
 #define MODULE_NAME "JsonVerdictLog"
 
+#define LOG_VERDICT_DROPS_START BIT_U8(0)
+#define LOG_VERDICT_DROPS_ALL   BIT_U8(1)
+#define LOG_VERDICT_PASS_START  BIT_U8(2)
+#define LOG_VERDICT_PASS_ALL    BIT_U8(3)
+
 typedef struct JsonVerdictOutputCtx_ {
     uint8_t flags;
     OutputJsonCtx *eve_ctx;
@@ -55,7 +60,7 @@ typedef struct JsonVerdictLogThread_ {
  * \param p  Pointer to Packet current being logged
  *
  */
-void GetVerdictJson(JsonBuilder *jb, const Packet *p)
+void EveAddVerdict(JsonBuilder *jb, const Packet *p)
 {
     jb_open_object(jb, "verdict");
 
@@ -68,14 +73,15 @@ void GetVerdictJson(JsonBuilder *jb, const Packet *p)
             JB_SET_STRING(jb, "action", "alert");
         }
         if (PacketCheckAction(p, ACTION_REJECT)) {
-            JB_SET_STRING(jb, "reject_target", "source");
+            JB_SET_STRING(jb, "reject-target", "to_client");
         } else if (PacketCheckAction(p, ACTION_REJECT_DST)) {
-            JB_SET_STRING(jb, "reject_target", "destination");
+            JB_SET_STRING(jb, "reject-target", "to_server");
         } else if (PacketCheckAction(p, ACTION_REJECT_BOTH)) {
-            JB_SET_STRING(jb, "reject_target", "both");
+            JB_SET_STRING(jb, "reject-target", "both");
         }
         jb_open_array(jb, "reject");
         switch (p->proto) {
+            case IPPROTO_UDP:
             case IPPROTO_ICMP:
             case IPPROTO_ICMPV6:
                 jb_append_string(jb, "icmp-prohib");
@@ -111,7 +117,7 @@ static int VerdictJson(JsonVerdictLogThread *vlt, const Packet *p)
     if (unlikely(jb == NULL))
         return TM_ECODE_OK;
 
-    GetVerdictJson(jb, p);
+    EveAddVerdict(jb, p);
 
     OutputJsonBuilderBuffer(jb, vlt->ctx);
     jb_free(jb);
@@ -223,7 +229,17 @@ static OutputInitResult JsonVerdictLogInitCtxSub(ConfNode *conf, OutputCtx *pare
         JsonVerdictOutputCtxFree(verdict_ctx);
         return result;
     }
-    memset(verdict_ctx, 0, sizeof(JsonVerdictOutputCtx));
+
+    if (conf) {
+        const char *options = ConfNodeLookupChildValue(conf, "drop");
+        if (options != NULL) {
+            if (strcasecmp(options, "start") == 0) {
+                verdict_ctx->flags |= LOG_VERDICT_DROPS_START;
+            } else if (strcasecmp(options, "all") == 0) {
+                verdict_ctx->flags |= LOG_VERDICT_DROPS_ALL;
+            }
+        }
+    }
 
     verdict_ctx->eve_ctx = vlt;
 

@@ -25,7 +25,7 @@
 #ifndef __OUTPUT_JSON_VERDICT_H__
 #define __OUTPUT_JSON_VERDICT_H__
 
-void GetVerdictJsonInfo(JsonBuilder *jb, const Packet *p);
+void EveAddVerdict(JsonBuilder *jb, const Packet *p);
 void JsonVerdictLogRegister(void);
 
 #endif /* __OUTPUT_JSON_VERDICT_H__ */
