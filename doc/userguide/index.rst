@@ -9,6 +9,7 @@ Suricata User Guide
    quickstart
    install.rst
    upgrade.rst
+   faq/kernel-drops.rst
    security.rst
    support-status.rst
    command-line-options
