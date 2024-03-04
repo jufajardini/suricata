@@ -1,6 +1,11 @@
 Output
 ======
 
+.. toctree::
+   :maxdepth: 2
+
+   eve-output
+
 Introduction
 ------------
 
