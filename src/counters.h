@@ -54,6 +54,9 @@ typedef struct StatsCounter_ {
     const char *name;
     const char *short_name;
 
+    /* configs flag - for enabling hiding counters that are zero, e.g. */
+    uint8_t flags;
+
     /* the next perfcounter for this tv's tm instance */
     struct StatsCounter_ *next;
 } StatsCounter;
@@ -118,6 +121,7 @@ bool StatsEnabled(void);
 void StatsReleaseResources(void);
 
 /* counter registration functions */
+uint16_t StatsRegisterCounterCheckConf(const char *name, struct ThreadVars_ *tv);
 uint16_t StatsRegisterCounter(const char *, struct ThreadVars_ *);
 uint16_t StatsRegisterAvgCounter(const char *, struct ThreadVars_ *);
 uint16_t StatsRegisterMaxCounter(const char *, struct ThreadVars_ *);

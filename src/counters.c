@@ -747,6 +747,7 @@ static int StatsOutput(ThreadVars *tv)
             thread_table[pc->gid].updates = pc->updates;
             table[pc->gid].name = pc->name;
             table[pc->gid].short_name = pc->short_name;
+            table[pc->gid].flags = pc->flags;
 
             pc = pc->next;
         }
@@ -793,6 +794,7 @@ static int StatsOutput(ThreadVars *tv)
             r->name = table[c].name;
             r->short_name = table[c].short_name;
             r->tm_name = sts->name;
+            r->flags = table[c].flags;
 
             switch (e->type) {
                 case STATS_TYPE_AVERAGE:
@@ -1040,8 +1042,7 @@ uint16_t StatsRegisterMaxCounter(const char *name, struct ThreadVars_ *tv)
 {
     uint16_t id = StatsRegisterQualifiedCounter(name,
             (tv->thread_group_name != NULL) ? tv->thread_group_name : tv->printable_name,
-            &tv->perf_public_ctx,
-            STATS_TYPE_MAXIMUM, NULL);
+            EVE_STATS_COUNTER_LOG_ZERO, &tv->perf_public_ctx, STATS_TYPE_MAXIMUM, NULL);
     return id;
 }
 
@@ -1062,10 +1063,8 @@ uint16_t StatsRegisterGlobalCounter(const char *name, uint64_t (*Func)(void))
 #else
     BUG_ON(stats_ctx == NULL);
 #endif
-    uint16_t id = StatsRegisterQualifiedCounter(name, NULL,
-            &(stats_ctx->global_counter_ctx),
-            STATS_TYPE_FUNC,
-            Func);
+    uint16_t id = StatsRegisterQualifiedCounter(name, NULL, EVE_STATS_COUNTER_LOG_ZERO,
+            &(stats_ctx->global_counter_ctx), STATS_TYPE_FUNC, Func);
     return id;
 }
 
@@ -1373,8 +1372,8 @@ void StatsThreadCleanup(ThreadVars *tv)
 static uint16_t RegisterCounter(const char *name, const char *tm_name,
                                StatsPublicThreadContext *pctx)
 {
-    uint16_t id = StatsRegisterQualifiedCounter(name, tm_name, pctx,
-                                                STATS_TYPE_NORMAL, NULL);
+    uint16_t id = StatsRegisterQualifiedCounter(
+            name, tm_name, EVE_STATS_COUNTER_LOG_ZERO, pctx, STATS_TYPE_NORMAL, NULL);
     return id;
 }
 

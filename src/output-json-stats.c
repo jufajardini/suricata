@@ -233,6 +233,9 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
                 continue;
             }
 
+            if (st->stats[u].value == 0 && st->stats[u].flags & ~EVE_STATS_COUNTER_LOG_ZERO) {
+                continue;
+            }
             json_t *js_type = NULL;
             const char *stat_name = st->stats[u].short_name;
             /*
@@ -277,6 +280,8 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
                 if (st->tstats[u].name == NULL)
                     continue;
                 if (flags & JSON_STATS_NO_ZEROES && st->tstats[u].value == 0) {
+                    continue;
+                if (st->tstats[u].value == 0 && st->tstats[u].flags & ~EVE_STATS_COUNTER_LOG_ZERO) {
                     continue;
                 }
 
