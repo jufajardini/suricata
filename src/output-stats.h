@@ -28,10 +28,13 @@
 
 #include "tm-modules.h"
 
+#define EVE_STATS_COUNTER_LOG_ZERO (1 << 0)
+
 typedef struct StatsRecord_ {
     const char *name;
     const char *short_name;
     const char *tm_name;
+    uint8_t flags;  /** Used for config setting such as log 0 counter or not */
     int64_t value;  /**< total value */
     int64_t pvalue; /**< prev value (may be higher for memuse counters) */
 } StatsRecord;

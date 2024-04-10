@@ -584,9 +584,8 @@ static void StatsReleaseCounter(StatsCounter *pc)
  *         present counter on success
  * \retval 0 on failure
  */
-static uint16_t StatsRegisterQualifiedCounter(const char *name, const char *tm_name,
-                                              StatsPublicThreadContext *pctx,
-                                              int type_q, uint64_t (*Func)(void))
+static uint16_t StatsRegisterQualifiedCounter(const char *name, const char *tm_name, uint8_t flags,
+        StatsPublicThreadContext *pctx, int type_q, uint64_t (*Func)(void))
 {
     StatsCounter **head = &pctx->head;
     StatsCounter *temp = NULL;
@@ -621,6 +620,8 @@ static uint16_t StatsRegisterQualifiedCounter(const char *name, const char *tm_n
      * thread context.  Please note that the id start from 1, and not 0 */
     pc->id = ++(pctx->curr_id);
     pc->name = name;
+    pc->flags = flags; // TODO: should we assume that all flags are set elsewhere, if/when we have
+                       // `flags` used for more than one possible setting?
 
     /* Precalculate the short name */
     if (strrchr(name, '.') != NULL) {
@@ -959,7 +960,36 @@ void StatsSpawnThreads(void)
 }
 
 /**
+ * \brief Registers a normal, unqualified counter, and sets whether it should be logged when zero
+ *
+ * \param name Name of the counter, to be registered
+ * \param tv    Pointer to the ThreadVars instance for which the counter would
+ *              be registered
+ *
+ * \retval id Counter id for the newly registered counter, or the already
+ *            present counter
+ */
+uint16_t StatsRegisterCounterCheckConf(const char *name, struct ThreadVars_ *tv)
+{
+    ConfNode *stats = ConfGetNode("outputs.eve-log.stats");
+    uint8_t flag = EVE_STATS_COUNTER_LOG_ZERO;
+    if (stats != NULL) {
+        const char *stats_counter = ConfNodeLookupChildValue(stats, name);
+        if (stats_counter != NULL && ConfValIsFalse(stats_counter)) {
+            // here, we'll call the registration with the flags as zero.
+            flag = ~EVE_STATS_COUNTER_LOG_ZERO;
+        }
+    }
+    uint16_t id = StatsRegisterQualifiedCounter(name,
+            (tv->thread_group_name != NULL) ? tv->thread_group_name : tv->printable_name, flag,
+            &tv->perf_public_ctx, STATS_TYPE_NORMAL, NULL);
+    return id;
+}
+
+/**
  * \brief Registers a normal, unqualified counter
+ *
+ * This enables logging of counters when they are 0
  *
  * \param name Name of the counter, to be registered
  * \param tv    Pointer to the ThreadVars instance for which the counter would
@@ -972,8 +1002,7 @@ uint16_t StatsRegisterCounter(const char *name, struct ThreadVars_ *tv)
 {
     uint16_t id = StatsRegisterQualifiedCounter(name,
             (tv->thread_group_name != NULL) ? tv->thread_group_name : tv->printable_name,
-            &tv->perf_public_ctx,
-            STATS_TYPE_NORMAL, NULL);
+            EVE_STATS_COUNTER_LOG_ZERO, &tv->perf_public_ctx, STATS_TYPE_NORMAL, NULL);
     return id;
 }
 
@@ -992,8 +1021,7 @@ uint16_t StatsRegisterAvgCounter(const char *name, struct ThreadVars_ *tv)
 {
     uint16_t id = StatsRegisterQualifiedCounter(name,
             (tv->thread_group_name != NULL) ? tv->thread_group_name : tv->printable_name,
-            &tv->perf_public_ctx,
-            STATS_TYPE_AVERAGE, NULL);
+            EVE_STATS_COUNTER_LOG_ZERO, &tv->perf_public_ctx, STATS_TYPE_AVERAGE, NULL);
     return id;
 }
 
