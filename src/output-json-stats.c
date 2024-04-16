@@ -426,6 +426,11 @@ static void OutputStatsLogDeinitSub(OutputCtx *output_ctx)
     SCFree(output_ctx);
 }
 
+ConfNode *OutputStatsGetConfNode(void)
+{
+    OutputModule *stats_module = OutputGetModuleByConfName("stats");
+}
+
 static OutputInitResult OutputStatsLogInitSub(ConfNode *conf, OutputCtx *parent_ctx)
 {
     OutputInitResult result = { NULL, false };

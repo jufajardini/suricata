@@ -668,6 +668,24 @@ OutputModule *OutputGetModuleByConfName(const char *conf_name)
     return NULL;
 }
 
+// /**
+//  * \brief Get an output sub-module config node by name.
+//  *
+//  * \retval The ConfNode with the given name or NULL if no output sub-module
+//  * with the given name is registered.
+//  */
+// ConfNode *OutputGetSubModuleConfByConfName(const char *conf_name)
+// {
+//     ConfNode *sub_module;
+
+//     TAILQ_FOREACH(module, &output_modules, entries) {
+//         if (strcmp(module->conf_name, conf_name) == 0)
+//             return module;
+//     }
+
+//     return NULL;
+// }
+
 /**
  * \brief Deregister all modules.  Useful for a memory clean exit.
  */

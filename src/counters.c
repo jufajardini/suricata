@@ -973,12 +973,15 @@ void StatsSpawnThreads(void)
  */
 uint16_t StatsRegisterCounterCheckConf(const char *name, struct ThreadVars_ *tv)
 {
-    ConfNode *stats = ConfGetNode("outputs.eve-log.stats");
+    ConfNode *eve_log = ConfGetNode("outputs.eve-log.types"); // Must have to walk the whole thing.
+
     uint8_t flag = EVE_STATS_COUNTER_LOG_ZERO;
-    if (stats != NULL) {
-        const char *stats_counter = ConfNodeLookupChildValue(stats, name);
+    if (eve_log != NULL) {
+        const char *stats_counter = ConfNodeLookupChildValue(eve_log, name);
+        // How can Regex be useful here?
+
+        // the idea is to check for: non-zeroes/ disabled / always log (true/ enabled)
         if (stats_counter != NULL && ConfValIsFalse(stats_counter)) {
-            // here, we'll call the registration with the flags as zero.
             flag = ~EVE_STATS_COUNTER_LOG_ZERO;
         }
     }
@@ -1002,9 +1005,7 @@ uint16_t StatsRegisterCounterCheckConf(const char *name, struct ThreadVars_ *tv)
  */
 uint16_t StatsRegisterCounter(const char *name, struct ThreadVars_ *tv)
 {
-    uint16_t id = StatsRegisterQualifiedCounter(name,
-            (tv->thread_group_name != NULL) ? tv->thread_group_name : tv->printable_name,
-            EVE_STATS_COUNTER_LOG_ZERO, &tv->perf_public_ctx, STATS_TYPE_NORMAL, NULL);
+    uint16_t id = StatsRegisterCounterCheckConf(name, tv);
     return id;
 }
 
