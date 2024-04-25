@@ -699,8 +699,9 @@ pkt_data
 --------
 
 ``pkt_data`` is a sticky buffer that allows for payload inspection from the
-beginning of the normalized packet data. As a sticky buffer, ``pkt_data``
-requires the usage of the :ref:`content` keyword for the buffer inspection.
+beginning of the packet/stream data. As a sticky buffer, ``pkt_data``
+requires the usage of a content inspection keyword for the buffer inspection,
+such as content, pcre, byte_test.
 
 Example of ``pkt_data`` in a signature:
 
