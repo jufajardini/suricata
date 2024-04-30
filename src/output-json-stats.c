@@ -281,6 +281,7 @@ json_t *StatsToJSON(const StatsTable *st, uint8_t flags)
                     continue;
                 if (flags & JSON_STATS_NO_ZEROES && st->tstats[u].value == 0) {
                     continue;
+                }
                 if (st->tstats[u].value == 0 && st->tstats[u].flags & ~EVE_STATS_COUNTER_LOG_ZERO) {
                     continue;
                 }
@@ -424,11 +425,6 @@ static void OutputStatsLogDeinitSub(OutputCtx *output_ctx)
     OutputStatsCtx *stats_ctx = output_ctx->data;
     SCFree(stats_ctx);
     SCFree(output_ctx);
-}
-
-ConfNode *OutputStatsGetConfNode(void)
-{
-    OutputModule *stats_module = OutputGetModuleByConfName("stats");
 }
 
 static OutputInitResult OutputStatsLogInitSub(ConfNode *conf, OutputCtx *parent_ctx)
