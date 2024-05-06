@@ -299,12 +299,16 @@ And in Rust:
         return 0;
     }
 
-Work In Progress changes
-========================
+Transaction changes
+===================
 
-Currently we are working to have files be part of the transaction instead of the per-flow state, as seen in https://redmine.openinfosecfoundation.org/issues/4444.
+As of Suricata 7.0, files are store in transactions, instead of in the per-flow
+state, as seen in https://redmine.openinfosecfoundation.org/issues/4444.
 
-Another work in progress is to limit the number of transactions per flow, to prevent Denial of Service (DoS) by quadratic complexity - a type of attack that may happen to protocols which can have multiple transactions at the same time - such as HTTP2 so-called streams (see  https://redmine.openinfosecfoundation.org/issues/4530).
+Also since Suricata 7.0, there is a limit to the number of transactions per
+flow, to prevent Denial of Service (DoS) by quadratic complexity - a type of
+attack that may happen to protocols which can have multiple transactions at the
+same time - such as HTTP2 so-called streams (see https://redmine.openinfosecfoundation.org/issues/4530).
 
 Common words and abbreviations
 ==============================
