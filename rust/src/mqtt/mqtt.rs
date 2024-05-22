@@ -428,6 +428,7 @@ impl MQTTState {
 
         while !current.is_empty() {
             SCLogDebug!("request: handling {}", current.len());
+            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
             match parse_message(current, self.protocol_version, self.max_msg_len) {
                 Ok((rem, msg)) => {
                     let _pdu = Frame::new(
@@ -514,6 +515,7 @@ impl MQTTState {
 
         while !current.is_empty() {
             SCLogDebug!("response: handling {}", current.len());
+            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
             match parse_message(current, self.protocol_version, self.max_msg_len) {
                 Ok((rem, msg)) => {
                     let _pdu = Frame::new(
