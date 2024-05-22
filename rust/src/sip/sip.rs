@@ -158,6 +158,7 @@ impl SIPState {
 
         let mut start = input;
         while !start.is_empty() {
+            core::sc_app_layer_parser_trigger_raw_stream_reassembly(flow, core::Direction::ToServer as i32);
             if self.request_frame.is_none() {
                 self.request_frame = Frame::new(
                     flow,
@@ -253,6 +254,7 @@ impl SIPState {
 
         let mut start = input;
         while !start.is_empty() {
+            core::sc_app_layer_parser_trigger_raw_stream_reassembly(flow, core::Direction::ToClient as i32);
             if self.response_frame.is_none() {
                 self.response_frame = Frame::new(
                     flow,
