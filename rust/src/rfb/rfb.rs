@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 Open Information Security Foundation
+/* Copyright (C) 2020-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -21,7 +21,8 @@
 use super::parser;
 use crate::applayer;
 use crate::applayer::*;
-use crate::core::{AppProto, Flow, ALPROTO_UNKNOWN, IPPROTO_TCP};
+use crate::core::{AppProto, Direction, Flow, ALPROTO_UNKNOWN, IPPROTO_TCP};
+use crate::core::sc_app_layer_parser_trigger_raw_stream_reassembly;
 use crate::frames::*;
 use nom7::Err;
 use std;
@@ -213,6 +214,7 @@ impl RFBState {
                                     "no transaction set at protocol selection stage"
                                 );
                             }
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                         }
                         Err(Err::Incomplete(_)) => {
                             return AppLayerResult::incomplete(
@@ -250,6 +252,7 @@ impl RFBState {
                             } else {
                                 debug_validate_fail!("no transaction set at security type stage");
                             }
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
 
                             match chosen_security_type {
                                 2 => self.state = parser::RFBGlobalState::TCVncChallenge,
@@ -307,6 +310,7 @@ impl RFBState {
                         } else {
                             debug_validate_fail!("no transaction set at security result stage");
                         }
+                        sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     }
                     Err(Err::Incomplete(_)) => {
                         return AppLayerResult::incomplete(
@@ -345,6 +349,7 @@ impl RFBState {
                         } else {
                             debug_validate_fail!("no transaction set at client init stage");
                         }
+                        sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     }
                     Err(Err::Incomplete(_)) => {
                         return AppLayerResult::incomplete(
@@ -431,6 +436,7 @@ impl RFBState {
                             } else {
                                 debug_validate_fail!("no transaction set but we just set one");
                             }
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                         }
                         Err(Err::Incomplete(_)) => {
                             return AppLayerResult::incomplete(
@@ -447,6 +453,7 @@ impl RFBState {
                 parser::RFBGlobalState::TCSupportedSecurityTypes => {
                     match parser::parse_supported_security_types(current) {
                         Ok((rem, request)) => {
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             consumed += current.len() - rem.len();
                             let _pdu = Frame::new(
                                 flow,
@@ -546,6 +553,7 @@ impl RFBState {
                             } else {
                                 debug_validate_fail!("no transaction set at security type stage");
                             }
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                         }
                         Err(Err::Incomplete(_)) => {
                             return AppLayerResult::incomplete(
@@ -566,6 +574,7 @@ impl RFBState {
                 }
                 parser::RFBGlobalState::TCVncChallenge => match parser::parse_vnc_auth(current) {
                     Ok((rem, request)) => {
+                        sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                         consumed += current.len() - rem.len();
                         let _pdu = Frame::new(
                             flow,
@@ -605,6 +614,7 @@ impl RFBState {
                 parser::RFBGlobalState::TCSecurityResult => {
                     match parser::parse_security_result(current) {
                         Ok((rem, request)) => {
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             consumed += current.len() - rem.len();
                             let _pdu = Frame::new(
                                 flow,
@@ -664,6 +674,7 @@ impl RFBState {
                             } else {
                                 debug_validate_fail!("no transaction set at failure reason stage");
                             }
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             return AppLayerResult::ok();
                         }
                         Err(Err::Incomplete(_)) => {
@@ -704,6 +715,7 @@ impl RFBState {
                                 current_transaction.tc_server_init = Some(request);
                                 // connection initialization is complete and parsed
                                 current_transaction.complete = true;
+                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             } else {
                                 debug_validate_fail!("no transaction set at server init stage");
                             }
