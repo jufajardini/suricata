@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2023 Open Information Security Foundation
+/* Copyright (C) 2020-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -428,9 +428,9 @@ impl MQTTState {
 
         while !current.is_empty() {
             SCLogDebug!("request: handling {}", current.len());
-            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
             match parse_message(current, self.protocol_version, self.max_msg_len) {
                 Ok((rem, msg)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     let _pdu = Frame::new(
                         flow,
                         &stream_slice,
@@ -515,9 +515,9 @@ impl MQTTState {
 
         while !current.is_empty() {
             SCLogDebug!("response: handling {}", current.len());
-            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
             match parse_message(current, self.protocol_version, self.max_msg_len) {
                 Ok((rem, msg)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                     let _pdu = Frame::new(
                         flow,
                         &stream_slice,
