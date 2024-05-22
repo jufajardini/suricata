@@ -458,7 +458,7 @@ pub unsafe extern "C" fn rs_krb5_parse_response(_flow: *const core::Flow,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rs_krb5_parse_request_tcp(_flow: *const core::Flow,
+pub unsafe extern "C" fn rs_krb5_parse_request_tcp(flow: *const core::Flow,
                                        state: *mut std::os::raw::c_void,
                                        _pstate: *mut std::os::raw::c_void,
                                        stream_slice: StreamSlice,
@@ -506,6 +506,7 @@ pub unsafe extern "C" fn rs_krb5_parse_request_tcp(_flow: *const core::Flow,
             }
             state.record_ts = 0;
             cur_i = &cur_i[state.record_ts..];
+            core::sc_app_layer_parser_trigger_raw_stream_reassembly(flow, core::Direction::ToServer as i32);
         } else {
             // more fragments required
             state.defrag_buf_ts.extend_from_slice(cur_i);
@@ -516,7 +517,7 @@ pub unsafe extern "C" fn rs_krb5_parse_request_tcp(_flow: *const core::Flow,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn rs_krb5_parse_response_tcp(_flow: *const core::Flow,
+pub unsafe extern "C" fn rs_krb5_parse_response_tcp(flow: *const core::Flow,
                                        state: *mut std::os::raw::c_void,
                                        _pstate: *mut std::os::raw::c_void,
                                        stream_slice: StreamSlice,
@@ -564,6 +565,7 @@ pub unsafe extern "C" fn rs_krb5_parse_response_tcp(_flow: *const core::Flow,
             }
             state.record_tc = 0;
             cur_i = &cur_i[state.record_tc..];
+            core::sc_app_layer_parser_trigger_raw_stream_reassembly(flow, core::Direction::ToClient as i32);
         } else {
             // more fragments required
             state.defrag_buf_tc.extend_from_slice(cur_i);
