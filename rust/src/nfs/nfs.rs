@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2021 Open Information Security Foundation
+/* Copyright (C) 2017-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -490,7 +490,7 @@ impl NFSState {
             if mytx.file_handle.is_empty() && !resp_handle.is_empty() {
                 mytx.file_handle = resp_handle.to_vec();
             }
-            
+
             SCLogDebug!("process_reply_record: tx ID {} XID {:04X} REQUEST {} RESPONSE {}",
                         mytx.id, mytx.xid, mytx.request_done, mytx.response_done);
         } else {
@@ -1272,6 +1272,7 @@ impl NFSState {
                     // go to the next record.
                     match parse_rpc(cur_i, true) {
                         Ok((_, ref rpc_record)) => {
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                             self.add_rpc_tcp_ts_creds(flow, stream_slice, &cur_i[RPC_TCP_PRE_CREDS..], (rpc_record.creds_len + 8) as i64);
                             self.process_request_record(flow, stream_slice, rpc_record);
                         }
@@ -1432,6 +1433,7 @@ impl NFSState {
                     // we have the full data of the record, lets parse
                     match parse_rpc_reply(cur_i, true) {
                         Ok((_, ref rpc_record)) => {
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             self.add_rpc_tcp_tc_frames(flow, stream_slice, cur_i, cur_i.len() as i64);
                             self.process_reply_record(flow, stream_slice, rpc_record);
                         }
