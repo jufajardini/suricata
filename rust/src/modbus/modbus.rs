@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 Open Information Security Foundation
+/* Copyright (C) 2021-2024 Open Information Security Foundation
 *
 * You can copy, redistribute or modify this Program under the terms of
 * the GNU General Public License version 2 as published by the Free
@@ -15,7 +15,8 @@
 * 02110-1301, USA.
 */
 use crate::applayer::{self, *};
-use crate::core::{self, AppProto, ALPROTO_FAILED, ALPROTO_UNKNOWN, IPPROTO_TCP};
+use crate::core::{self, AppProto, Flow, ALPROTO_FAILED, ALPROTO_UNKNOWN, IPPROTO_TCP};
+use crate::core::sc_app_layer_parser_trigger_raw_stream_reassembly;
 
 use std::ffi::CString;
 
@@ -174,11 +175,12 @@ impl ModbusState {
         }
     }
 
-    pub fn parse(&mut self, input: &[u8], direction: Direction) -> AppLayerResult {
+    pub fn parse(&mut self, flow: *const Flow, input: &[u8], direction: Direction) -> AppLayerResult {
         let mut rest = input;
         while !rest.is_empty() {
             match MODBUS_PARSER.parse(rest, direction.clone()) {
                 Ok((inner_rest, Some(mut msg))) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, direction.clone() as i32);
                     match direction {
                         Direction::ToServer | Direction::Unknown => {
                             match self.find_response_and_validate(&mut msg) {
@@ -305,7 +307,7 @@ pub unsafe extern "C" fn rs_modbus_state_tx_free(state: *mut std::os::raw::c_voi
 
 #[no_mangle]
 pub unsafe extern "C" fn rs_modbus_parse_request(
-    _flow: *const core::Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
+    flow: *const core::Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
     stream_slice: StreamSlice,
     _data: *const std::os::raw::c_void,
 ) -> AppLayerResult {
@@ -319,12 +321,12 @@ pub unsafe extern "C" fn rs_modbus_parse_request(
     }
 
     let state = cast_pointer!(state, ModbusState);
-    state.parse(buf, Direction::ToServer)
+    state.parse(flow, buf, Direction::ToServer)
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rs_modbus_parse_response(
-    _flow: *const core::Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
+    flow: *const core::Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
     stream_slice: StreamSlice,
     _data: *const std::os::raw::c_void,
 ) -> AppLayerResult {
@@ -338,7 +340,7 @@ pub unsafe extern "C" fn rs_modbus_parse_response(
     }
 
     let state = cast_pointer!(state, ModbusState);
-    state.parse(buf, Direction::ToClient)
+    state.parse(flow, buf, Direction::ToClient)
 }
 
 #[no_mangle]
