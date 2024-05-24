@@ -1,4 +1,4 @@
-/* Copyright (C) 2021 Open Information Security Foundation
+/* Copyright (C) 2021-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -16,7 +16,8 @@
  */
 
 use std;
-use crate::core::{ALPROTO_UNKNOWN, AppProto, Flow, IPPROTO_TCP};
+use crate::core::{ALPROTO_UNKNOWN, AppProto, Direction, Flow, IPPROTO_TCP};
+use crate::core::sc_app_layer_parser_trigger_raw_stream_reassembly;
 use crate::applayer::{self, *};
 use crate::frames::*;
 use std::ffi::CString;
@@ -195,6 +196,7 @@ impl TelnetState {
             // app-layer-frame-documentation tag start: update frame_len
             match parser::parse_message(start) {
                 Ok((rem, request)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     let consumed = start.len() - rem.len();
                     if rem.len() == start.len() {
                         panic!("lockup");
@@ -289,6 +291,7 @@ impl TelnetState {
             };
             match r {
                 Ok((rem, response)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                     let consumed = start.len() - rem.len();
                     start = rem;
 
