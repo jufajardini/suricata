@@ -1,4 +1,4 @@
-/* Copyright (C) 2020 Open Information Security Foundation
+/* Copyright (C) 2020-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -17,7 +17,7 @@
 
 use super::parser;
 use crate::applayer::*;
-use crate::core::*;
+use crate::core::{Direction, *};
 use nom7::Err;
 use std::ffi::CString;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -108,7 +108,7 @@ impl SSHState {
     }
 
     fn parse_record(
-        &mut self, mut input: &[u8], resp: bool, pstate: *mut std::os::raw::c_void,
+        &mut self, flow: *const Flow, mut input: &[u8], resp: bool, pstate: *mut std::os::raw::c_void,
     ) -> AppLayerResult {
         let (hdr, ohdr) = if !resp {
             (&mut self.transaction.cli_hdr, &self.transaction.srv_hdr)
@@ -145,10 +145,17 @@ impl SSHState {
                 hdr.record_left = 0;
             }
         }
+
+        let direction = if resp {
+            Direction::ToClient
+        } else {
+            Direction::ToServer
+        };
         //parse records out of input
         while !input.is_empty() {
             match parser::ssh_parse_record(input) {
                 Ok((rem, head)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, direction as i32);
                     SCLogDebug!("SSH valid record {}", head);
                     match head.msg_code {
                         parser::MessageCode::Kexinit if hassh_is_enabled() => {
@@ -173,7 +180,7 @@ impl SSHState {
                         }
                         _ => {}
                     }
-                    
+
                     input = rem;
                     //header and complete data (not returned)
                 }
@@ -184,7 +191,7 @@ impl SSHState {
                             let remlen = rem.len() as u32;
                             hdr.record_left = head.pkt_len - 2 - remlen;
                             //header with rem as incomplete data
-                            match head.msg_code { 
+                            match head.msg_code {
                                 parser::MessageCode::NewKeys => {
                                     hdr.flags = SSHConnectionState::SshStateFinished;
                                 }
@@ -238,7 +245,7 @@ impl SSHState {
     }
 
     fn parse_banner(
-        &mut self, input: &[u8], resp: bool, pstate: *mut std::os::raw::c_void,
+        &mut self, flow: *const Flow, input: &[u8], resp: bool, pstate: *mut std::os::raw::c_void,
     ) -> AppLayerResult {
         let hdr = if !resp {
             &mut self.transaction.cli_hdr
@@ -248,7 +255,7 @@ impl SSHState {
         if hdr.flags == SSHConnectionState::SshStateBannerWaitEol {
             match parser::ssh_parse_line(input) {
                 Ok((rem, _)) => {
-                    let mut r = self.parse_record(rem, resp, pstate);
+                    let mut r = self.parse_record(flow, rem, resp, pstate);
                     if r.is_incomplete() {
                         //adds bytes consumed by banner to incomplete result
                         r.consumed += (input.len() - rem.len()) as u32;
@@ -288,7 +295,7 @@ impl SSHState {
                     );
                     self.set_event(SSHEvent::LongBanner);
                 }
-                let mut r = self.parse_record(rem, resp, pstate);
+                let mut r = self.parse_record(flow, rem, resp, pstate);
                 if r.is_incomplete() {
                     //adds bytes consumed by banner to incomplete result
                     r.consumed += (input.len() - rem.len()) as u32;
@@ -352,7 +359,7 @@ pub extern "C" fn rs_ssh_state_tx_free(_state: *mut std::os::raw::c_void, _tx_id
 
 #[no_mangle]
 pub unsafe extern "C" fn rs_ssh_parse_request(
-    _flow: *const Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
+    flow: *const Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
     stream_slice: StreamSlice,
     _data: *const std::os::raw::c_void
 ) -> AppLayerResult {
@@ -360,15 +367,15 @@ pub unsafe extern "C" fn rs_ssh_parse_request(
     let buf = stream_slice.as_slice();
     let hdr = &mut state.transaction.cli_hdr;
     if hdr.flags < SSHConnectionState::SshStateBannerDone {
-        return state.parse_banner(buf, false, pstate);
+        return state.parse_banner(flow, buf, false, pstate);
     } else {
-        return state.parse_record(buf, false, pstate);
+        return state.parse_record(flow, buf, false, pstate);
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rs_ssh_parse_response(
-    _flow: *const Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
+    flow: *const Flow, state: *mut std::os::raw::c_void, pstate: *mut std::os::raw::c_void,
     stream_slice: StreamSlice,
     _data: *const std::os::raw::c_void
 ) -> AppLayerResult {
@@ -376,9 +383,9 @@ pub unsafe extern "C" fn rs_ssh_parse_response(
     let buf = stream_slice.as_slice();
     let hdr = &mut state.transaction.srv_hdr;
     if hdr.flags < SSHConnectionState::SshStateBannerDone {
-        return state.parse_banner(buf, true, pstate);
+        return state.parse_banner(flow, buf, true, pstate);
     } else {
-        return state.parse_record(buf, true, pstate);
+        return state.parse_record(flow, buf, true, pstate);
     }
 }
 
@@ -497,14 +504,14 @@ pub extern "C" fn rs_ssh_hassh_is_enabled() -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn rs_ssh_tx_get_log_condition( tx: *mut std::os::raw::c_void) -> bool {
     let tx = cast_pointer!(tx, SSHTransaction);
-    
+
     if rs_ssh_hassh_is_enabled() {
         if  tx.cli_hdr.flags == SSHConnectionState::SshStateFinished &&
             tx.srv_hdr.flags == SSHConnectionState::SshStateFinished {
-            return true; 
+            return true;
         }
     }
-    else if  tx.cli_hdr.flags == SSHConnectionState::SshStateBannerDone && 
+    else if  tx.cli_hdr.flags == SSHConnectionState::SshStateBannerDone &&
         tx.srv_hdr.flags == SSHConnectionState::SshStateBannerDone {
         return true;
     }
