@@ -1,4 +1,4 @@
-/* Copyright (C) 2020-2022 Open Information Security Foundation
+/* Copyright (C) 2020-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -1009,6 +1009,7 @@ impl HTTP2State {
         while !input.is_empty() {
             match parser::http2_parse_frame_header(input) {
                 Ok((rem, head)) => {
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, dir as i32);
                     let hl = head.length as usize;
 
                     //we check for completeness first
