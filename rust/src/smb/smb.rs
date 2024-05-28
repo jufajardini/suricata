@@ -31,11 +31,11 @@ use std::ffi::{self, CString};
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
- 
+
 use nom7::{Err, Needed};
 use nom7::error::{make_error, ErrorKind};
 
-use crate::core::*;
+use crate::core::{sc_app_layer_parser_trigger_raw_stream_reassembly, *};
 use crate::applayer;
 use crate::applayer::*;
 use crate::frames::*;
@@ -1405,6 +1405,7 @@ impl SMBState {
                                     SCLogDebug!("SMBv1 record");
                                     match parse_smb_record(nbss_hdr.data) {
                                         Ok((_, ref smb_record)) => {
+                                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                                             let pdu_frame = self.add_smb1_ts_pdu_frame(flow, stream_slice, nbss_hdr.data, nbss_hdr.length as i64);
                                             self.add_smb1_ts_hdr_data_frames(flow, stream_slice, nbss_hdr.data, nbss_hdr.length as i64);
                                             if smb_record.is_request() {
@@ -1432,6 +1433,7 @@ impl SMBState {
                                         SCLogDebug!("SMBv2 record");
                                         match parse_smb2_request_record(nbss_data) {
                                             Ok((nbss_data_rem, ref smb_record)) => {
+                                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                                                 let record_len = (nbss_data.len() - nbss_data_rem.len()) as i64;
                                                 let pdu_frame = self.add_smb2_ts_pdu_frame(flow, stream_slice, nbss_data, record_len);
                                                 self.add_smb2_ts_hdr_data_frames(flow, stream_slice, nbss_data, record_len, smb_record.header_len as i64);
@@ -1464,6 +1466,7 @@ impl SMBState {
                                         SCLogDebug!("SMBv3 transform record");
                                         match parse_smb3_transform_record(nbss_data) {
                                             Ok((nbss_data_rem, ref _smb3_record)) => {
+                                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                                                 let record_len = (nbss_data.len() - nbss_data_rem.len()) as i64;
                                                 self.add_smb3_ts_pdu_frame(flow, stream_slice, nbss_data, record_len);
                                                 self.add_smb3_ts_hdr_data_frames(flow, stream_slice, nbss_data, record_len);
@@ -1736,6 +1739,7 @@ impl SMBState {
                         // let's parse it
                         match parse_smb_version(nbss_hdr.data) {
                             Ok((_, ref smb)) => {
+                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                                 SCLogDebug!("SMB {:?}", smb);
                                 if smb.version == 0xff_u8 { // SMB1
                                     SCLogDebug!("SMBv1 record");
@@ -1763,6 +1767,7 @@ impl SMBState {
                                         SCLogDebug!("SMBv2 record");
                                         match parse_smb2_response_record(nbss_data) {
                                             Ok((nbss_data_rem, ref smb_record)) => {
+                                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                                                 let record_len = (nbss_data.len() - nbss_data_rem.len()) as i64;
                                                 let pdu_frame = self.add_smb2_tc_pdu_frame(flow, stream_slice, nbss_data, record_len);
                                                 self.add_smb2_tc_hdr_data_frames(flow, stream_slice, nbss_data, record_len, smb_record.header_len as i64);
@@ -1788,6 +1793,7 @@ impl SMBState {
                                         SCLogDebug!("SMBv3 transform record");
                                         match parse_smb3_transform_record(nbss_data) {
                                             Ok((nbss_data_rem, ref _smb3_record)) => {
+                                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                                                 let record_len = (nbss_data.len() - nbss_data_rem.len()) as i64;
                                                 self.add_smb3_tc_pdu_frame(flow, stream_slice, nbss_data, record_len);
                                                 self.add_smb3_tc_hdr_data_frames(flow, stream_slice, nbss_data, record_len);
