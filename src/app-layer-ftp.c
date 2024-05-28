@@ -492,7 +492,6 @@ static AppLayerResult FTPParseRequest(Flow *f, void *ftp_state, AppLayerParserSt
     FTPThreadCtx *thread_data = local_data;
 
     SCEnter();
-    /* PrintRawDataFp(stdout, input,input_len); */
 
     FtpState *state = (FtpState *)ftp_state;
     void *ptmp;
@@ -682,11 +681,9 @@ static inline bool FTPIsPPR(const uint8_t *input, uint32_t input_len)
 /**
  * \brief This function is called to retrieve a ftp response
  * \param ftp_state the ftp state structure for the parser
- * \param input input line of the command
- * \param input_len length of the request
- * \param output the resulting output
  *
- * \retval 1 when the command is parsed, 0 otherwise
+ * \retval APP_LAYER_OK when input was process successfully
+ * \retval APP_LAYER_ERROR when a unrecoverable error was encountered
  */
 static AppLayerResult FTPParseResponse(Flow *f, void *ftp_state, AppLayerParserState *pstate,
         StreamSlice stream_slice, void *local_data)
@@ -1002,9 +999,9 @@ static StreamingBufferConfig sbcfg = STREAMING_BUFFER_CONFIG_INITIALIZER;
 /**
  * \brief This function is called to retrieve a ftp request
  * \param ftp_state the ftp state structure for the parser
- * \param output the resulting output
  *
- * \retval 1 when the command is parsed, 0 otherwise
+ * \retval APP_LAYER_OK when input was process successfully
+ * \retval APP_LAYER_ERROR when a unrecoverable error was encountered
  */
 static AppLayerResult FTPDataParse(Flow *f, FtpDataState *ftpdata_state,
         AppLayerParserState *pstate, StreamSlice stream_slice, void *local_data, uint8_t direction)
