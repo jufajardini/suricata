@@ -790,6 +790,8 @@ static AppLayerResult FTPParseResponse(Flow *f, void *ftp_state, AppLayerParserS
     tx_complete:
         tx->done = true;
 
+        AppLayerParserTriggerRawStreamReassembly(f, STREAM_TOCLIENT);
+
         if (line.len >= ftp_max_line_len) {
             ftpi.consumed = ftpi.len + 1;
             break;
