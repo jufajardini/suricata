@@ -300,6 +300,7 @@ static FTPTransaction *FTPTransactionCreate(FtpState *state)
     FTPTransaction *firsttx = TAILQ_FIRST(&state->tx_list);
     if (firsttx && state->tx_cnt - firsttx->tx_id > ftp_config_maxtx) {
         // FTP does not set events yet...
+        AppLayerDecoderEventsSetEventRaw(&firsttx->tx_data.events, FtpEventTooManyTransactions);
         return NULL;
     }
     FTPTransaction *tx = FTPCalloc(1, sizeof(*tx));
@@ -1035,7 +1036,8 @@ static AppLayerResult FTPDataParse(Flow *f, FtpDataState *ftpdata_state,
 
         /* we shouldn't get data in the wrong dir. Don't set things up for this dir */
         if ((direction & data->direction) == 0) {
-            // TODO set event for data in wrong direction
+            AppLayerDecoderEventsSetEventRaw(
+                    &ftpdata_state->tx_data.events, FtpEventDataInWrongDirection);
             SCLogDebug("input %u not for our direction (%s): %s/%s", input_len,
                     (direction & STREAM_TOSERVER) ? "toserver" : "toclient",
                     data->cmd == FTP_COMMAND_STOR ? "STOR" : "RETR",
