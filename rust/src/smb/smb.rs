@@ -1,4 +1,4 @@
-/* Copyright (C) 2017-2022 Open Information Security Foundation
+/* Copyright (C) 2017-2024 Open Information Security Foundation
  *
  * You can copy, redistribute or modify this Program under the terms of
  * the GNU General Public License version 2 as published by the Free
@@ -20,7 +20,7 @@
  */
 
 /*  GAP processing:
- *  - if post-gap we've seen a succesful tx req/res: we consider "re-sync'd"
+ *  - if post-gap we've seen a successful tx req/res: we consider "re-sync'd"
  */
 
 // written by Victor Julien
@@ -268,7 +268,7 @@ impl SMBVerCmdStat {
 /// Coordinated Universal Time (UTC)."
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct SMBFiletime {
-    ts: u64, 
+    ts: u64,
 }
 
 impl SMBFiletime {
@@ -1296,7 +1296,7 @@ impl SMBState {
                                 self.add_nbss_ts_frames(flow, stream_slice, input, nbss_part_hdr.length as i64);
                                 self.add_smb1_ts_pdu_frame(flow, stream_slice, nbss_part_hdr.data, nbss_part_hdr.length as i64);
                                 self.add_smb1_ts_hdr_data_frames(flow, stream_slice, nbss_part_hdr.data, nbss_part_hdr.length as i64);
-                                
+
                                 let consumed = input.len() - output.len();
                                 return consumed;
                             }
@@ -1316,7 +1316,7 @@ impl SMBState {
                                 self.add_nbss_ts_frames(flow, stream_slice, input, nbss_part_hdr.length as i64);
                                 self.add_smb2_ts_pdu_frame(flow, stream_slice, nbss_part_hdr.data, nbss_part_hdr.length as i64);
                                 self.add_smb2_ts_hdr_data_frames(flow, stream_slice, nbss_part_hdr.data, nbss_part_hdr.length as i64, smb_record.header_len as i64);
-                                
+
                                 let consumed = input.len() - output.len();
                                 SCLogDebug!("consumed {}", consumed);
                                 return consumed;
