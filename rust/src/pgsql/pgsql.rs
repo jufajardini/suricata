@@ -313,7 +313,7 @@ impl PgsqlState {
         }
     }
 
-    fn parse_request(&mut self, _flow: *const Flow, input: &[u8]) -> AppLayerResult {
+    fn parse_request(&mut self, flow: *const Flow, input: &[u8]) -> AppLayerResult {
         // We're not interested in empty requests.
         if input.is_empty() {
             return AppLayerResult::ok();
@@ -341,8 +341,7 @@ impl PgsqlState {
             );
             match PgsqlState::state_based_req_parsing(self.state_progress, start) {
                 Ok((rem, request)) => {
-                    #[cfg(not(test))]
-                    sc_app_layer_parser_trigger_raw_stream_reassembly(_flow, Direction::ToServer as i32);
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     start = rem;
                     if let Some(state) = PgsqlState::request_next_state(&request) {
                         self.state_progress = state;
@@ -451,7 +450,7 @@ impl PgsqlState {
         }
     }
 
-    fn parse_response(&mut self, flow: Option<*const Flow>, input: &[u8]) -> AppLayerResult {
+    fn parse_response(&mut self, flow: *const Flow, input: &[u8]) -> AppLayerResult {
         // We're not interested in empty responses.
         if input.is_empty() {
             return AppLayerResult::ok();
@@ -472,16 +471,12 @@ impl PgsqlState {
         while !start.is_empty() {
             match PgsqlState::state_based_resp_parsing(self.state_progress, start) {
                 Ok((rem, response)) => {
-                    if let Some(flow) = flow {
-                        sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
-                    }
+                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                     start = rem;
                     SCLogDebug!("Response is {:?}", &response);
-                    if let Some(flow) = flow {
-                        if let Some(state) = self.response_process_next_state(&response, flow) {
+                    if let Some(state) = self.response_process_next_state(&response, flow) {
                             self.state_progress = state;
-                        };
-                    }
+                    };
                     let tx_completed = self.is_tx_completed();
                     let curr_state = self.state_progress;
                     if let Some(tx) = self.find_or_create_tx() {
