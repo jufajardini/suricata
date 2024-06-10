@@ -554,10 +554,10 @@ mod tests {
         ];
         let mut state = RdpState::new();
         // will consume 0, request length + 1
-        assert_eq!(AppLayerResult::incomplete(0, 9), state.parse_ts(buf_1));
+        assert_eq!(AppLayerResult::incomplete(0, 9), state.parse_ts(std::ptr::null_mut, buf_1));
         assert_eq!(0, state.transactions.len());
         // exactly aligns with transaction
-        assert_eq!(AppLayerResult::ok(), state.parse_ts(buf_2));
+        assert_eq!(AppLayerResult::ok(), state.parse_ts(std::ptr::null_mut, buf_2));
         assert_eq!(1, state.transactions.len());
         let item = RdpTransactionItem::X224ConnectionRequest(X224ConnectionRequest {
             cdt: 0,
@@ -578,7 +578,7 @@ mod tests {
     fn test_parse_ts_other() {
         let buf: &[u8] = &[0x03, 0x00, 0x00, 0x01, 0x00];
         let mut state = RdpState::new();
-        assert_eq!(AppLayerResult::err(), state.parse_ts(buf));
+        assert_eq!(AppLayerResult::err(), state.parse_ts(std::ptr::null_mut, buf));
     }
 
     #[test]
@@ -587,10 +587,10 @@ mod tests {
         let buf_2: &[u8] = &[0x03, 0x00, 0x00, 0x09, 0x02, 0xf0, 0x80, 0x7f, 0x66];
         let mut state = RdpState::new();
         // will consume 0, request length + 1
-        assert_eq!(AppLayerResult::incomplete(0, 6), state.parse_tc(buf_1));
+        assert_eq!(AppLayerResult::incomplete(0, 6), state.parse_tc(std::ptr::null_mut, buf_1));
         assert_eq!(0, state.transactions.len());
         // exactly aligns with transaction
-        assert_eq!(AppLayerResult::ok(), state.parse_tc(buf_2));
+        assert_eq!(AppLayerResult::ok(), state.parse_tc(std::ptr::null_mut, buf_2));
         assert_eq!(1, state.transactions.len());
         let item = RdpTransactionItem::McsConnectResponse(McsConnectResponse {});
         assert_eq!(item, state.transactions[0].item);
