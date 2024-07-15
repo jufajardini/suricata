@@ -244,19 +244,37 @@ impl PgsqlState {
     ///
     /// As Pgsql transactions are bidirectional and may be comprised of several
     /// responses, we must track State progress to decide on tx completion
-    fn is_tx_completed(&self) -> bool {
-        if let PgsqlStateProgress::ReadyForQueryReceived
-        | PgsqlStateProgress::SSLRejectedReceived
-        | PgsqlStateProgress::SimpleAuthenticationReceived
-        | PgsqlStateProgress::SASLAuthenticationReceived
-        | PgsqlStateProgress::SASLAuthenticationContinueReceived
-        | PgsqlStateProgress::SASLAuthenticationFinalReceived
-        | PgsqlStateProgress::ConnectionTerminated
-        | PgsqlStateProgress::Finished = self.state_progress
-        {
-            true
+    fn is_tx_completed(&self, dir: Direction) -> bool {
+        if dir == Direction::ToServer {
+            if let PgsqlStateProgress::SSLRequestReceived
+                /// Not sure if StartupMessageReceived should be here. For some auth methods, there will be more
+                /// messages from the front-end before the full transaction is completed
+                /// maybe we can, as it's still a valid portion of the transaction that is completed?
+                | PgsqlStateProgress::StartupMessageReceived
+                | PgsqlStateProgress::SimpleQueryReceived
+                | PgsqlStateProgress::PasswordMessageReceived
+                | PgsqlStateProgress::CancelRequestReceived
+                | PgsqlStateProgress::SASLResponseReceived
+                | PgsqlStateProgress::ConnectionTerminated = self.state_progress
+                {
+                    true
+                } else {
+                    false
+                }
         } else {
-            false
+            if let PgsqlStateProgress::ReadyForQueryReceived
+            | PgsqlStateProgress::SSLRejectedReceived
+            | PgsqlStateProgress::SimpleAuthenticationReceived
+            | PgsqlStateProgress::SASLAuthenticationReceived
+            | PgsqlStateProgress::SASLAuthenticationContinueReceived
+            | PgsqlStateProgress::SASLAuthenticationFinalReceived
+            | PgsqlStateProgress::ConnectionTerminated
+            | PgsqlStateProgress::Finished = self.state_progress
+            {
+                true
+            } else {
+                false
+            }
         }
     }
 
@@ -346,11 +364,11 @@ impl PgsqlState {
                     if let Some(state) = PgsqlState::request_next_state(&request) {
                         self.state_progress = state;
                     };
-                    let tx_completed = self.is_tx_completed();
+                    let tx_completed = self.is_tx_completed(Direction::ToServer);
                     if let Some(tx) = self.find_or_create_tx() {
                         tx.request = Some(request);
                         if tx_completed {
-                            tx.tx_state = PgsqlTransactionState::ResponseDone;
+                            tx.tx_state = PgsqlTransactionState::RequestDone;
                         }
                     } else {
                         // If there isn't a new transaction, we'll consider Suri should move on
@@ -477,7 +495,7 @@ impl PgsqlState {
                     if let Some(state) = self.response_process_next_state(&response, flow) {
                         self.state_progress = state;
                     };
-                    let tx_completed = self.is_tx_completed();
+                    let tx_completed = self.is_tx_completed(Direction::ToClient);
                     let curr_state = self.state_progress;
                     if let Some(tx) = self.find_or_create_tx() {
                         if curr_state == PgsqlStateProgress::DataRowReceived {
