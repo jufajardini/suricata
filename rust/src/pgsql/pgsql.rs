@@ -39,6 +39,7 @@ static mut PGSQL_MAX_TX: usize = 1024;
 pub enum PgsqlTransactionState {
     Init = 0,
     RequestReceived,
+    RequestDone,
     ResponseDone,
     FlushedOut,
 }
@@ -47,6 +48,7 @@ pub enum PgsqlTransactionState {
 pub struct PgsqlTransaction {
     pub tx_id: u64,
     pub tx_state: PgsqlTransactionState,
+    pub tx_progress: PgsqlTransactionProgress,
     pub request: Option<PgsqlFEMessage>,
     pub responses: Vec<PgsqlBEMessage>,
 
@@ -73,6 +75,7 @@ impl PgsqlTransaction {
         Self {
             tx_id: 0,
             tx_state: PgsqlTransactionState::Init,
+            tx_progress: PgsqlTransactionProgress::IdleState,
             request: None,
             responses: Vec::<PgsqlBEMessage>::new(),
             data_row_cnt: 0,
@@ -95,7 +98,7 @@ impl PgsqlTransaction {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PgsqlStateProgress {
+pub enum PgsqlTransactionProgress {
     IdleState,
     SSLRequestReceived,
     SSLRejectedReceived,
@@ -133,7 +136,7 @@ pub struct PgsqlState {
     response_gap: bool,
     backend_secret_key: u32,
     backend_pid: u32,
-    state_progress: PgsqlStateProgress,
+    state_progress: PgsqlTransactionState,
     tx_index_completed: usize,
 }
 
@@ -247,9 +250,9 @@ impl PgsqlState {
     fn is_tx_completed(&self, dir: Direction) -> bool {
         if dir == Direction::ToServer {
             if let PgsqlStateProgress::SSLRequestReceived
-                /// Not sure if StartupMessageReceived should be here. For some auth methods, there will be more
-                /// messages from the front-end before the full transaction is completed
-                /// maybe we can, as it's still a valid portion of the transaction that is completed?
+                // Not sure if StartupMessageReceived should be here. For some auth methods, there will be more
+                // messages from the front-end before the full transaction is completed
+                // maybe we can, as it's still a valid portion of the transaction that is completed?
                 | PgsqlStateProgress::StartupMessageReceived
                 | PgsqlStateProgress::SimpleQueryReceived
                 | PgsqlStateProgress::PasswordMessageReceived
@@ -359,7 +362,6 @@ impl PgsqlState {
             );
             match PgsqlState::state_based_req_parsing(self.state_progress, start) {
                 Ok((rem, request)) => {
-                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                     start = rem;
                     if let Some(state) = PgsqlState::request_next_state(&request) {
                         self.state_progress = state;
@@ -369,6 +371,7 @@ impl PgsqlState {
                         tx.request = Some(request);
                         if tx_completed {
                             tx.tx_state = PgsqlTransactionState::RequestDone;
+                            sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToServer as i32);
                         }
                     } else {
                         // If there isn't a new transaction, we'll consider Suri should move on
@@ -489,7 +492,6 @@ impl PgsqlState {
         while !start.is_empty() {
             match PgsqlState::state_based_resp_parsing(self.state_progress, start) {
                 Ok((rem, response)) => {
-                    sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                     start = rem;
                     SCLogDebug!("Response is {:?}", &response);
                     if let Some(state) = self.response_process_next_state(&response, flow) {
@@ -516,6 +518,7 @@ impl PgsqlState {
                             tx.responses.push(response);
                             if tx_completed {
                                 tx.tx_state = PgsqlTransactionState::ResponseDone;
+                                sc_app_layer_parser_trigger_raw_stream_reassembly(flow, Direction::ToClient as i32);
                             }
                         }
                     } else {
@@ -764,7 +767,7 @@ pub unsafe extern "C" fn rs_pgsql_register_parser() {
         parse_tc: rs_pgsql_parse_response,
         get_tx_count: rs_pgsql_state_get_tx_count,
         get_tx: rs_pgsql_state_get_tx,
-        tx_comp_st_ts: PgsqlTransactionState::RequestReceived as i32,
+        tx_comp_st_ts: PgsqlTransactionState::RequestDone as i32,
         tx_comp_st_tc: PgsqlTransactionState::ResponseDone as i32,
         tx_get_progress: rs_pgsql_tx_get_alstate_progress,
         get_eventinfo: None,
