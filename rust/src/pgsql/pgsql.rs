@@ -166,7 +166,7 @@ impl PgsqlState {
             response_gap: false,
             backend_secret_key: 0,
             backend_pid: 0,
-            state_progress: PgsqlStateProgress::IdleState,
+            state_progress: PgsqlTransactionState::Init,
             tx_index_completed: 0,
         }
     }
@@ -225,15 +225,15 @@ impl PgsqlState {
     // TODO A future, improved version may be based on current message type and dir, too
     fn find_or_create_tx(&mut self) -> Option<&mut PgsqlTransaction> {
         // First, check if we should create a new tx (in case the other was completed or there's no tx yet)
-        if self.state_progress == PgsqlStateProgress::IdleState
-            || self.state_progress == PgsqlStateProgress::StartupMessageReceived
-            || self.state_progress == PgsqlStateProgress::PasswordMessageReceived
-            || self.state_progress == PgsqlStateProgress::SASLInitialResponseReceived
-            || self.state_progress == PgsqlStateProgress::SASLResponseReceived
-            || self.state_progress == PgsqlStateProgress::SimpleQueryReceived
-            || self.state_progress == PgsqlStateProgress::SSLRequestReceived
-            || self.state_progress == PgsqlStateProgress::ConnectionTerminated
-            || self.state_progress == PgsqlStateProgress::CancelRequestReceived
+        if self.state_progress == PgsqlTransactionProgress::IdleState
+            || self.state_progress == PgsqlTransactionProgress::StartupMessageReceived
+            || self.state_progress == PgsqlTransactionProgress::PasswordMessageReceived
+            || self.state_progress == PgsqlTransactionProgress::SASLInitialResponseReceived
+            || self.state_progress == PgsqlTransactionProgress::SASLResponseReceived
+            || self.state_progress == PgsqlTransactionProgress::SimpleQueryReceived
+            || self.state_progress == PgsqlTransactionProgress::SSLRequestReceived
+            || self.state_progress == PgsqlTransactionProgress::ConnectionTerminated
+            || self.state_progress == PgsqlTransactionProgress::CancelRequestReceived
         {
             let tx = self.new_tx();
             self.transactions.push_back(tx);
@@ -249,30 +249,30 @@ impl PgsqlState {
     /// responses, we must track State progress to decide on tx completion
     fn is_tx_completed(&self, dir: Direction) -> bool {
         if dir == Direction::ToServer {
-            if let PgsqlStateProgress::SSLRequestReceived
+            if let PgsqlTransactionProgress::SSLRequestReceived
                 // Not sure if StartupMessageReceived should be here. For some auth methods, there will be more
                 // messages from the front-end before the full transaction is completed
                 // maybe we can, as it's still a valid portion of the transaction that is completed?
-                | PgsqlStateProgress::StartupMessageReceived
-                | PgsqlStateProgress::SimpleQueryReceived
-                | PgsqlStateProgress::PasswordMessageReceived
-                | PgsqlStateProgress::CancelRequestReceived
-                | PgsqlStateProgress::SASLResponseReceived
-                | PgsqlStateProgress::ConnectionTerminated = self.state_progress
+                | PgsqlTransactionProgress::StartupMessageReceived
+                | PgsqlTransactionProgress::SimpleQueryReceived
+                | PgsqlTransactionProgress::PasswordMessageReceived
+                | PgsqlTransactionProgress::CancelRequestReceived
+                | PgsqlTransactionProgress::SASLResponseReceived
+                | PgsqlTransactionProgress::ConnectionTerminated = self.state_progress
                 {
                     true
                 } else {
                     false
                 }
         } else {
-            if let PgsqlStateProgress::ReadyForQueryReceived
-            | PgsqlStateProgress::SSLRejectedReceived
-            | PgsqlStateProgress::SimpleAuthenticationReceived
-            | PgsqlStateProgress::SASLAuthenticationReceived
-            | PgsqlStateProgress::SASLAuthenticationContinueReceived
-            | PgsqlStateProgress::SASLAuthenticationFinalReceived
-            | PgsqlStateProgress::ConnectionTerminated
-            | PgsqlStateProgress::Finished = self.state_progress
+            if let PgsqlTransactionProgress::ReadyForQueryReceived
+            | PgsqlTransactionProgress::SSLRejectedReceived
+            | PgsqlTransactionProgress::SimpleAuthenticationReceived
+            | PgsqlTransactionProgress::SASLAuthenticationReceived
+            | PgsqlTransactionProgress::SASLAuthenticationContinueReceived
+            | PgsqlTransactionProgress::SASLAuthenticationFinalReceived
+            | PgsqlTransactionProgress::ConnectionTerminated
+            | PgsqlTransactionProgress::Finished = self.state_progress
             {
                 true
             } else {
@@ -287,26 +287,26 @@ impl PgsqlState {
     /// is what helps us keep track of the PgsqlTransactions - when one finished
     /// when the other starts.
     /// State isn't directly updated to avoid reference borrowing conflicts.
-    fn request_next_state(request: &PgsqlFEMessage) -> Option<PgsqlStateProgress> {
+    fn request_next_state(request: &PgsqlFEMessage) -> Option<PgsqlTransactionProgress> {
         match request {
-            PgsqlFEMessage::SSLRequest(_) => Some(PgsqlStateProgress::SSLRequestReceived),
-            PgsqlFEMessage::StartupMessage(_) => Some(PgsqlStateProgress::StartupMessageReceived),
-            PgsqlFEMessage::PasswordMessage(_) => Some(PgsqlStateProgress::PasswordMessageReceived),
+            PgsqlFEMessage::SSLRequest(_) => Some(PgsqlTransactionProgress::SSLRequestReceived),
+            PgsqlFEMessage::StartupMessage(_) => Some(PgsqlTransactionProgress::StartupMessageReceived),
+            PgsqlFEMessage::PasswordMessage(_) => Some(PgsqlTransactionProgress::PasswordMessageReceived),
             PgsqlFEMessage::SASLInitialResponse(_) => {
-                Some(PgsqlStateProgress::SASLInitialResponseReceived)
+                Some(PgsqlTransactionProgress::SASLInitialResponseReceived)
             }
-            PgsqlFEMessage::SASLResponse(_) => Some(PgsqlStateProgress::SASLResponseReceived),
+            PgsqlFEMessage::SASLResponse(_) => Some(PgsqlTransactionProgress::SASLResponseReceived),
             PgsqlFEMessage::SimpleQuery(_) => {
                 SCLogDebug!("Match: SimpleQuery");
-                Some(PgsqlStateProgress::SimpleQueryReceived)
+                Some(PgsqlTransactionProgress::SimpleQueryReceived)
                 // TODO here we may want to save the command that was received, to compare that later on when we receive command completed?
 
                 // Important to keep in mind that: "In simple Query mode, the format of retrieved values is always text, except when the given command is a FETCH from a cursor declared with the BINARY option. In that case, the retrieved values are in binary format. The format codes given in the RowDescription message tell which format is being used." (from pgsql official documentation)
             }
-            PgsqlFEMessage::CancelRequest(_) => Some(PgsqlStateProgress::CancelRequestReceived),
+            PgsqlFEMessage::CancelRequest(_) => Some(PgsqlTransactionProgress::CancelRequestReceived),
             PgsqlFEMessage::Terminate(_) => {
                 SCLogDebug!("Match: Terminate message");
-                Some(PgsqlStateProgress::ConnectionTerminated)
+                Some(PgsqlTransactionProgress::ConnectionTerminated)
             }
             PgsqlFEMessage::UnknownMessageType(_) => {
                 SCLogDebug!("Match: Unknown message type");
@@ -317,17 +317,17 @@ impl PgsqlState {
     }
 
     fn state_based_req_parsing(
-        state: PgsqlStateProgress, input: &[u8],
+        state: PgsqlTransactionProgress, input: &[u8],
     ) -> IResult<&[u8], parser::PgsqlFEMessage> {
         match state {
-            PgsqlStateProgress::SASLAuthenticationReceived => {
+            PgsqlTransactionProgress::SASLAuthenticationReceived => {
                 parser::parse_sasl_initial_response(input)
             }
-            PgsqlStateProgress::SASLInitialResponseReceived
-            | PgsqlStateProgress::SASLAuthenticationContinueReceived => {
+            PgsqlTransactionProgress::SASLInitialResponseReceived
+            | PgsqlTransactionProgress::SASLAuthenticationContinueReceived => {
                 parser::parse_sasl_response(input)
             }
-            PgsqlStateProgress::SimpleAuthenticationReceived => {
+            PgsqlTransactionProgress::SimpleAuthenticationReceived => {
                 parser::parse_password_message(input)
             }
             _ => parser::parse_request(input),
@@ -404,56 +404,56 @@ impl PgsqlState {
     /// Transaction, that is also done here
     fn response_process_next_state(
         &mut self, response: &PgsqlBEMessage, f: *const Flow,
-    ) -> Option<PgsqlStateProgress> {
+    ) -> Option<PgsqlTransactionProgress> {
         match response {
             PgsqlBEMessage::SSLResponse(parser::SSLResponseMessage::SSLAccepted) => {
                 SCLogDebug!("SSL Request accepted");
                 unsafe {
                     AppLayerRequestProtocolTLSUpgrade(f);
                 }
-                Some(PgsqlStateProgress::Finished)
+                Some(PgsqlTransactionProgress::Finished)
             }
             PgsqlBEMessage::SSLResponse(parser::SSLResponseMessage::SSLRejected) => {
                 SCLogDebug!("SSL Request rejected");
-                Some(PgsqlStateProgress::SSLRejectedReceived)
+                Some(PgsqlTransactionProgress::SSLRejectedReceived)
             }
             PgsqlBEMessage::AuthenticationSASL(_) => {
-                Some(PgsqlStateProgress::SASLAuthenticationReceived)
+                Some(PgsqlTransactionProgress::SASLAuthenticationReceived)
             }
             PgsqlBEMessage::AuthenticationSASLContinue(_) => {
-                Some(PgsqlStateProgress::SASLAuthenticationContinueReceived)
+                Some(PgsqlTransactionProgress::SASLAuthenticationContinueReceived)
             }
             PgsqlBEMessage::AuthenticationSASLFinal(_) => {
-                Some(PgsqlStateProgress::SASLAuthenticationFinalReceived)
+                Some(PgsqlTransactionProgress::SASLAuthenticationFinalReceived)
             }
             PgsqlBEMessage::AuthenticationOk(_) => {
-                Some(PgsqlStateProgress::AuthenticationOkReceived)
+                Some(PgsqlTransactionProgress::AuthenticationOkReceived)
             }
-            PgsqlBEMessage::ParameterStatus(_) => Some(PgsqlStateProgress::ParameterSetup),
+            PgsqlBEMessage::ParameterStatus(_) => Some(PgsqlTransactionProgress::ParameterSetup),
             PgsqlBEMessage::BackendKeyData(_) => {
                 let backend_info = response.get_backendkey_info();
                 self.backend_pid = backend_info.0;
                 self.backend_secret_key = backend_info.1;
-                Some(PgsqlStateProgress::BackendKeyReceived)
+                Some(PgsqlTransactionProgress::BackendKeyReceived)
             }
-            PgsqlBEMessage::ReadyForQuery(_) => Some(PgsqlStateProgress::ReadyForQueryReceived),
+            PgsqlBEMessage::ReadyForQuery(_) => Some(PgsqlTransactionProgress::ReadyForQueryReceived),
             // TODO should we store any Parameter Status in PgsqlState?
             PgsqlBEMessage::AuthenticationMD5Password(_)
             | PgsqlBEMessage::AuthenticationCleartextPassword(_) => {
-                Some(PgsqlStateProgress::SimpleAuthenticationReceived)
+                Some(PgsqlTransactionProgress::SimpleAuthenticationReceived)
             }
-            PgsqlBEMessage::RowDescription(_) => Some(PgsqlStateProgress::RowDescriptionReceived),
+            PgsqlBEMessage::RowDescription(_) => Some(PgsqlTransactionProgress::RowDescriptionReceived),
             PgsqlBEMessage::ConsolidatedDataRow(msg) => {
                 // Increment tx.data_size here, since we know msg type, so that we can later on log that info
                 self.transactions.back_mut()?.sum_data_size(msg.data_size);
-                Some(PgsqlStateProgress::DataRowReceived)
+                Some(PgsqlTransactionProgress::DataRowReceived)
             }
             PgsqlBEMessage::CommandComplete(_) => {
                 // TODO Do we want to compare the command that was stored when
                 // query was sent with what we received here?
-                Some(PgsqlStateProgress::CommandCompletedReceived)
+                Some(PgsqlTransactionProgress::CommandCompletedReceived)
             }
-            PgsqlBEMessage::ErrorResponse(_) => Some(PgsqlStateProgress::ErrorMessageReceived),
+            PgsqlBEMessage::ErrorResponse(_) => Some(PgsqlTransactionProgress::ErrorMessageReceived),
             _ => {
                 // We don't always have to change current state when we see a response...
                 None
@@ -462,9 +462,9 @@ impl PgsqlState {
     }
 
     fn state_based_resp_parsing(
-        state: PgsqlStateProgress, input: &[u8],
+        state: PgsqlTransactionProgress, input: &[u8],
     ) -> IResult<&[u8], parser::PgsqlBEMessage> {
-        if state == PgsqlStateProgress::SSLRequestReceived {
+        if state == PgsqlTransactionProgress::SSLRequestReceived {
             parser::parse_ssl_response(input)
         } else {
             parser::pgsql_parse_response(input)
@@ -500,9 +500,9 @@ impl PgsqlState {
                     let tx_completed = self.is_tx_completed(Direction::ToClient);
                     let curr_state = self.state_progress;
                     if let Some(tx) = self.find_or_create_tx() {
-                        if curr_state == PgsqlStateProgress::DataRowReceived {
+                        if curr_state == PgsqlTransactionProgress::DataRowReceived {
                             tx.incr_row_cnt();
-                        } else if curr_state == PgsqlStateProgress::CommandCompletedReceived
+                        } else if curr_state == PgsqlTransactionProgress::CommandCompletedReceived
                             && tx.get_row_cnt() > 0
                         {
                             // let's summarize the info from the data_rows in one response
@@ -859,7 +859,7 @@ mod test {
         let buf: &[u8] = &[0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x16, 0x2f];
         // We can pass null here as the only place that uses flow in the parse_request fn isn't run for unittests
         state.parse_request(std::ptr::null_mut(), buf);
-        let ok_state = PgsqlStateProgress::SSLRequestReceived;
+        let ok_state = PgsqlTransactionProgress::SSLRequestReceived;
 
         assert_eq!(state.state_progress, ok_state);
 
@@ -907,16 +907,16 @@ mod test {
     #[test]
     fn test_find_or_create_tx() {
         let mut state = PgsqlState::new();
-        state.state_progress = PgsqlStateProgress::UnknownState;
+        state.state_progress = PgsqlTransactionProgress::UnknownState;
         let tx = state.find_or_create_tx();
         assert!(tx.is_none());
 
-        state.state_progress = PgsqlStateProgress::IdleState;
+        state.state_progress = PgsqlTransactionProgress::IdleState;
         let tx = state.find_or_create_tx();
         assert!(tx.is_some());
 
         // Now, even though there isn't a new transaction created, the previous one is available
-        state.state_progress = PgsqlStateProgress::SSLRejectedReceived;
+        state.state_progress = PgsqlTransactionProgress::SSLRejectedReceived;
         let tx = state.find_or_create_tx();
         assert!(tx.is_some());
         assert_eq!(tx.unwrap().tx_id, 1);
