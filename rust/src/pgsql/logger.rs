@@ -29,8 +29,8 @@ pub const PGSQL_LOG_PASSWORDS: u32 = BIT_U32!(0);
 fn log_pgsql(tx: &PgsqlTransaction, flags: u32, js: &mut JsonBuilder) -> Result<(), JsonError> {
     js.open_object("pgsql")?;
     js.set_uint("tx_id", tx.tx_id)?;
-    if let Some(request) = &tx.request {
-        js.set_object("request", &log_request(request, flags)?)?;
+    if !tx.requests.is_empty() {
+        js.set_object("request", &log_request_object(tx, flags)?)?;
     } else if tx.responses.is_empty() {
         SCLogDebug!("Suricata created an empty PGSQL transaction");
         // TODO Log anomaly event instead?
@@ -48,8 +48,16 @@ fn log_pgsql(tx: &PgsqlTransaction, flags: u32, js: &mut JsonBuilder) -> Result<
     Ok(())
 }
 
-fn log_request(req: &PgsqlFEMessage, flags: u32) -> Result<JsonBuilder, JsonError> {
-    let mut js = JsonBuilder::try_new_object()?;
+fn log_request_object(tx: &PgsqlTransaction, flags: u32) -> Result<JsonBuilder, JsonError> {
+    let mut jb = JsonBuilder::try_new_object()?;
+    for request in &tx.requests {
+        log_request(request, &mut jb, flags)?;
+    }
+    jb.close()?;
+    Ok(jb)
+}
+
+fn log_request(req: &PgsqlFEMessage, js: &mut JsonBuilder, flags: u32) -> Result<(), JsonError> {
     match req {
         PgsqlFEMessage::StartupMessage(StartupPacket {
             length: _,
@@ -119,8 +127,7 @@ fn log_request(req: &PgsqlFEMessage, flags: u32) -> Result<JsonBuilder, JsonErro
             // We don't want to log these, for now. Cf redmine: #6576
         }
     }
-    js.close()?;
-    Ok(js)
+    Ok(())
 }
 
 fn log_response_object(tx: &PgsqlTransaction) -> Result<JsonBuilder, JsonError> {

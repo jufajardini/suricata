@@ -47,7 +47,7 @@ pub enum PgsqlTransactionState {
 pub struct PgsqlTransaction {
     pub tx_id: u64,
     pub tx_state: PgsqlTransactionState,
-    pub request: Option<PgsqlFEMessage>,
+    pub requests: Vec<PgsqlFEMessage>,
     pub responses: Vec<PgsqlBEMessage>,
 
     pub data_row_cnt: u64,
@@ -73,7 +73,7 @@ impl PgsqlTransaction {
         Self {
             tx_id: 0,
             tx_state: PgsqlTransactionState::Init,
-            request: None,
+            requests: Vec::<PgsqlFEMessage>::new(),
             responses: Vec::<PgsqlBEMessage>::new(),
             data_row_cnt: 0,
             data_size: 0,
@@ -348,7 +348,7 @@ impl PgsqlState {
                     };
                     let tx_completed = self.is_tx_completed();
                     if let Some(tx) = self.find_or_create_tx() {
-                        tx.request = Some(request);
+                        tx.requests.push(request);
                         if tx_completed {
                             tx.tx_state = PgsqlTransactionState::ResponseDone;
                         }
