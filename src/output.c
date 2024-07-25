@@ -1158,6 +1158,7 @@ static EveJsonSimpleAppLayerLogger simple_json_applayer_loggers[ALPROTO_MAX] = {
     { ALPROTO_WEBSOCKET, rs_websocket_logger_log },
     { ALPROTO_LDAP, rs_ldap_logger_log },
     { ALPROTO_DOH2, AlertJsonDoh2 },
+    { ALPROTO_STUN, NULL }, // TODO missing
     { ALPROTO_TEMPLATE, rs_template_logger_log },
     { ALPROTO_RDP, (EveJsonSimpleTxLogFunc)rs_rdp_to_json },
     { ALPROTO_HTTP2, rs_http2_log_json },
