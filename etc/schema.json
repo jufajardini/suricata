@@ -4707,6 +4707,10 @@
                                     "description": "Errors encountered parsing SSH protocol",
                                     "$ref": "#/$defs/stats_applayer_error"
                                 },
+                                "stun": {
+                                    "description": "Errors encountered parsing STUN protocol",
+                                    "$ref": "#/$defs/stats_applayer_error"
+                                },
                                 "telnet": {
                                     "description": "Errors encountered parsing Telnet protocol",
                                     "$ref": "#/$defs/stats_applayer_error"
@@ -4878,6 +4882,10 @@
                                     "description": "Number of flows for SSH protocol",
                                     "type": "integer"
                                 },
+                                "stun": {
+                                    "description": "Number of flows for STUN protocol",
+                                    "type": "integer"
+                                },
                                 "telnet": {
                                     "description": "Number of flows for Telnet protocol",
                                     "type": "integer"
@@ -5042,6 +5050,10 @@
                                 },
                                 "ssh": {
                                     "description": "Number of transactions for SSH protocol",
+                                    "type": "integer"
+                                },
+                                "stun": {
+                                    "description": "Number of transactions for STUN protocol",
                                     "type": "integer"
                                 },
                                 "telnet": {
