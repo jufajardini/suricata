@@ -6370,6 +6370,40 @@
                     },
                     "additionalProperties": false
                 },
+                "stun": {
+                    "type": "object",
+                    "properties": {
+                        "request": {
+                            "type": "object",
+                            "properties": {
+                                "message_type": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "response": {
+                            "type": "object",
+                            "properties": {
+                                "message_type": {
+                                    "type": "string"
+                                }
+                            },
+                            "attributes": {
+                                "type": "object",
+                                "properties": {
+                                    "type": "object",
+                                    "attribute": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    }
+                },
                 "tcp": {
                     "type": "object",
                     "properties": {
