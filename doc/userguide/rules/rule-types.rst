@@ -81,7 +81,8 @@ aspects aforementioned.
       - Action Scope
       - Inspection Hook
       - Data Exposed
-      - Keyword Examples (non-exhaustive)
+      - Keyword Examples
+        (non-exhaustive)
     * - Decoder Events Only
       - Packet
       - Per-packet basis
