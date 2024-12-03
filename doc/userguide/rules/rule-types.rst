@@ -82,6 +82,7 @@ aspects aforementioned.
       - Inspection Hook
       - Data Exposed
       - Keyword Examples
+
         (non-exhaustive)
     * - Decoder Events Only
       - Packet
