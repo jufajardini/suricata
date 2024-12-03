@@ -74,7 +74,7 @@ The following table lists all Suricata signature types, and how they impact the
 aspects aforementioned.
 
 .. list-table:: Suricata Rule Types
-    :widths: 10 15 20 29 26
+    :widths: 10 17 18 29 26
     :header-rows: 1
 
     * - Type
