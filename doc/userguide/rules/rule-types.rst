@@ -101,7 +101,7 @@ aspects aforementioned.
       - Source/ Destination field of a rule
     * - IP Only (contains negated address)(*)
       - Flow
-      - Once per direction
+      - All packets
       - On IP addresses on the flow
       - Source/ Destination field of a rule, containing negated address
     * - Protocol Detection Only
@@ -118,9 +118,8 @@ aspects aforementioned.
       - ``content`` with ``startswith`` or ``depth``
     * - Stream
       - Flow, if stateful (**)
-      - Per stream chunk, if stateful, per-packet if not.
-      - Against the reassembled stream. If stream unavailable, match per-packet.
-        (stream payload or packet payload)
+      - Stream chunks, if stateful, just packets if not.
+      - Stream reassembled payload or packet payload data.
       - ``tcp-stream`` in protocol field; simple ``content``; ``byte_extract``
     * - Application Layer Protocol
       - Flow
