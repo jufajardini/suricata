@@ -86,8 +86,8 @@ aspects aforementioned.
         (non-exhaustive)
     * - Decoder Events Only
       - Packet
-      - Per-packet basis
-      - Packets that are broken on an IP level
+      - Per-broken/ invalid packet
+      - Decoding events
       - ``decode-event``
     * - Packet
       - Packet
@@ -95,7 +95,7 @@ aspects aforementioned.
       - Packet-level info (e.g.: header info)
       - ``tcp-pkt``, ``itype``, ``tcp.hdr``, ``tcp.seq``, ``ttl`` etc.
     * - IP Only
-      - Flow
+      - If packets are part of a flow, on flow. All packets, if packets are part of one
       - Once per direction
       - On IP addresses on the flow
       - Source/ Destination field of a rule
@@ -112,8 +112,9 @@ aspects aforementioned.
     * - Packet-Stream
       - Flow, if stateful (**)
       - Per stream chunk, if stateful, per-packet if not.
-      - Against the reassembled stream. If stream unavailable, match per-packet.
-        (stream payload or packet payload)
+
+        (stream payload AND packet payload)
+      - Exposes the reassembled stream and/or payload data.
       - ``content`` with ``startswith`` or ``depth``
     * - Stream
       - Flow, if stateful (**)
