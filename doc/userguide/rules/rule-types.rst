@@ -95,7 +95,7 @@ aspects aforementioned.
       - Packet-level info (e.g.: header info)
       - ``tcp-pkt``, ``itype``, ``tcp.hdr``, ``tcp.seq``, ``ttl`` etc.
     * - IP Only
-      - If packets are part of a flow, on flow. All packets, if packets are part of one
+      - Flow (if existing). Packets (if not part of a flow)
       - Once per direction
       - On IP addresses on the flow
       - Source/ Destination field of a rule
