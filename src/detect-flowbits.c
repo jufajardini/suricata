@@ -624,12 +624,74 @@ int DetectFlowbitsAnalyze(DetectEngineCtx *de_ctx)
             SCLogDebug("SET flowbit %s/%u: SID %u", varname, i,
                     de_ctx->sig_array[array[i].set_sids[x]]->id);
         }
-        for (uint32_t x = 0; x < array[i].isset_sids_idx; x++) {
-            Signature *s = de_ctx->sig_array[array[i].isset_sids[x]];
-            SCLogDebug("GET flowbit %s/%u: SID %u", varname, i, s->id);
+        if (to_state) {
+            for (uint32_t x = 0; x < array[i].isset_sids_idx; x++) {
+                Signature *s = de_ctx->sig_array[array[i].isset_sids[x]];
+                SCLogDebug("GET flowbit %s/%u: SID %u", varname, i, s->id);
 
-            if (to_state) {
+                uint32_t sids_array_size = array[i].set_sids_idx;
+
                 s->init_data->init_flags |= SIG_FLAG_INIT_STATE_MATCH;
+                s->init_data->is_rule_state_dependant = true;
+
+                if (s->init_data->rule_state_dependant_sids_array == NULL) {
+                    s->init_data->rule_state_dependant_sids_array =
+                            SCCalloc(sids_array_size, sizeof(uint32_t));
+                    if (s->init_data->rule_state_dependant_sids_array == NULL) {
+                        SCLogError("Failed to allocate memory for rule_state_dependant_ids");
+                        goto end;
+                    }
+                    s->init_data->rule_state_variable_idx_size = 1;
+                    s->init_data->rule_state_variable_idx_array =
+                            SCCalloc(s->init_data->rule_state_variable_idx_size, sizeof(uint32_t));
+                    if (s->init_data->rule_state_variable_idx_array == NULL) {
+                        SCLogError("Failed to allocate memory for rule_state_variable_idx");
+                        goto end;
+                    }
+                    s->init_data->rule_state_dependant_sids_size = sids_array_size;
+                    SCLogDebug("alloc'ed array for rule dependency and fbs idx array, sid %u, "
+                                "sizes are %u and %u",
+                            s->id, s->init_data->rule_state_dependant_sids_size,
+                            s->init_data->rule_state_variable_idx_size);
+                } else {
+                    uint32_t new_array_size =
+                            s->init_data->rule_state_dependant_sids_size + sids_array_size;
+                    void *tmp_ptr = SCRealloc(s->init_data->rule_state_dependant_sids_array,
+                            new_array_size * sizeof(uint32_t));
+                    if (tmp_ptr == NULL) {
+                        SCLogError("Failed to allocate memory for rule_state_variable_idx");
+                        goto end;
+                    }
+                    s->init_data->rule_state_dependant_sids_array = tmp_ptr;
+                    s->init_data->rule_state_dependant_sids_size = new_array_size;
+                    SCLogDebug("realloc'ed array for rule dependency, sid %u, new size is %u",
+                            s->id, s->init_data->rule_state_dependant_sids_size);
+                    uint32_t new_fb_array_size = s->init_data->rule_state_variable_idx_size + 1;
+                    void *tmp_fb_ptr = SCRealloc(s->init_data->rule_state_variable_idx_array,
+                            new_fb_array_size * sizeof(uint32_t));
+                    s->init_data->rule_state_variable_idx_array = tmp_fb_ptr;
+                    if (s->init_data->rule_state_variable_idx_array == NULL) {
+                        SCLogError("Failed to reallocate memory for rule_state_variable_idx");
+                        goto end;
+                    }
+                    SCLogDebug(
+                            "realloc'ed array for flowbits ids, new size is %u", new_fb_array_size);
+                    s->init_data->rule_state_dependant_sids_size = new_array_size;
+                    s->init_data->rule_state_variable_idx_size = new_fb_array_size;
+                }
+                for (uint32_t idx = 0; idx < s->init_data->rule_state_dependant_sids_size; idx++) {
+                    if (idx < array[i].set_sids_idx) {
+                        s->init_data->rule_state_dependant_sids_array
+                                [s->init_data->rule_state_dependant_sids_idx] =
+                                de_ctx->sig_array[array[i].set_sids[idx]]->id;
+                        s->init_data->rule_state_dependant_sids_idx++;
+                    }
+                }
+                s->init_data
+                        ->rule_state_variable_idx_array[s->init_data->rule_state_variable_idx_size -
+                                                        1] = i;
+                s->init_data->rule_state_variable_idx_size += 1;
+
                 SCLogDebug("made SID %u stateful because it depends on "
                         "stateful rules that set flowbit %s", s->id, varname);
             }

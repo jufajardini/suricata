@@ -2125,6 +2125,8 @@ static int SigMatchPrepare(DetectEngineCtx *de_ctx)
             IPOnlyCIDRListFree(s->init_data->cidr_src);
 
         SCFree(s->init_data->buffers);
+        SCFree(s->init_data->rule_state_dependant_sids_array);
+        SCFree(s->init_data->rule_state_variable_idx_array);
         SCFree(s->init_data);
         s->init_data = NULL;
     }
