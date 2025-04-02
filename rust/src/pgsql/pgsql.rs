@@ -121,6 +121,9 @@ pub enum PgsqlStateProgress {
     CancelRequestReceived,
     ConnectionTerminated,
     // Related to Backend-received messages //
+    CopyOutResponseReceived,
+    CopyDataOutReceived, // TODO -- Should we differentiate if from FE or BE?
+    CopyDoneReceived,
     SSLRejectedReceived,
     // SSPIAuthenticationReceived, // TODO implement
     SASLAuthenticationReceived,
@@ -252,6 +255,7 @@ impl PgsqlState {
             || self.state_progress == PgsqlStateProgress::SASLResponseReceived
             || self.state_progress == PgsqlStateProgress::SimpleQueryReceived
             || self.state_progress == PgsqlStateProgress::SSLRequestReceived
+            || self.state_progress == PgsqlStateProgress::CopyOutResponseReceived
             || self.state_progress == PgsqlStateProgress::ConnectionTerminated
             || self.state_progress == PgsqlStateProgress::CancelRequestReceived
         {
@@ -481,6 +485,7 @@ impl PgsqlState {
             }
             PgsqlBEMessage::ReadyForQuery(_) => Some(PgsqlStateProgress::ReadyForQueryReceived),
             // TODO should we store any Parameter Status in PgsqlState?
+            // -- For CopyBoth mode, parameterstatus may be important (replication parameter)
             PgsqlBEMessage::AuthenticationMD5Password(_)
             | PgsqlBEMessage::AuthenticationCleartextPassword(_) => {
                 Some(PgsqlStateProgress::SimpleAuthenticationReceived)
@@ -491,6 +496,13 @@ impl PgsqlState {
                 self.transactions.back_mut()?.sum_data_size(msg.data_size);
                 Some(PgsqlStateProgress::DataRowReceived)
             }
+            PgsqlBEMessage::CopyOutResponse(_) => Some(PgsqlStateProgress::CopyOutResponseReceived),
+            PgsqlBEMessage::ConsolidatedCopyDataOut(msg) => {
+                // Increment tx.data_size here, since we know msg type, so that we can later on log that info
+                self.transactions.back_mut()?.sum_data_size(msg.data_size);
+                Some(PgsqlStateProgress::CopyDataOutReceived)
+            }
+            PgsqlBEMessage::CopyDone(_) => Some(PgsqlStateProgress::CopyDoneReceived),
             PgsqlBEMessage::CommandComplete(_) => {
                 // TODO Do we want to compare the command that was stored when
                 // query was sent with what we received here?
@@ -504,6 +516,7 @@ impl PgsqlState {
             PgsqlBEMessage::ErrorResponse(_) => Some(PgsqlStateProgress::ErrorMessageReceived),
             _ => {
                 // We don't always have to change current state when we see a response...
+                // NotificationResponse and NoticeResponse fall here
                 None
             }
         }

@@ -269,6 +269,30 @@ pub struct NotificationResponse {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct CopyOutResponse {
+    pub identifier: u8,
+    pub length: u32,
+    pub format: u8,
+    pub column_cnt: u16, // maybe we don't need this one
+    // for each column, there are column_cnt u16 format codes received
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ConsolidatedCopyDataOut {
+    pub identifier: u8,
+    pub length: u32,
+    pub row_cnt: u32, // CopyData msgs from the backend will come one per row
+    pub data_size: u64,
+}
+
+// TODO rename to something more generic, since this can be used for other messages that only have identifier and length
+#[derive(Debug, PartialEq, Eq)]
+pub struct TerminationMessage {
+    pub identifier: u8,
+    pub length: u32,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum PgsqlBEMessage {
     SSLResponse(SSLResponseMessage),
     ErrorResponse(ErrorNoticeMessage),
@@ -283,6 +307,9 @@ pub enum PgsqlBEMessage {
     ParameterStatus(ParameterStatusMessage),
     BackendKeyData(BackendKeyDataMessage),
     CommandComplete(RegularPacket),
+    CopyOutResponse(CopyOutResponse),
+    ConsolidatedCopyDataOut(ConsolidatedCopyDataOut),
+    CopyDone(TerminationMessage),
     ReadyForQuery(ReadyForQueryMessage),
     RowDescription(RowDescriptionMessage),
     ConsolidatedDataRow(ConsolidatedDataRowPacket),
@@ -309,6 +336,9 @@ impl PgsqlBEMessage {
             PgsqlBEMessage::ParameterStatus(_) => "parameter_status",
             PgsqlBEMessage::BackendKeyData(_) => "backend_key_data",
             PgsqlBEMessage::CommandComplete(_) => "command_completed",
+            PgsqlBEMessage::CopyOutResponse(_) => "copy_out_response",
+            PgsqlBEMessage::ConsolidatedCopyDataOut(_) => "copy_data_out", // TODO copy_data_out or copy_data?
+            PgsqlBEMessage::CopyDone(_) => "copy_done",
             PgsqlBEMessage::ReadyForQuery(_) => "ready_for_query",
             PgsqlBEMessage::RowDescription(_) => "row_description",
             PgsqlBEMessage::SSLResponse(SSLResponseMessage::InvalidResponse) => {
@@ -347,12 +377,6 @@ impl SASLAuthenticationMechanism {
 }
 
 type SASLInitialResponse = (SASLAuthenticationMechanism, u32, Vec<u8>);
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct TerminationMessage {
-    pub identifier: u8,
-    pub length: u32,
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CancelRequestMessage {
