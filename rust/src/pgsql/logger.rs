@@ -224,8 +224,10 @@ fn log_response(res: &PgsqlBEMessage, jb: &mut JsonBuilder) -> Result<(), JsonEr
             backend_pid,
             secret_key,
         }) => {
+            jb.open_object(res.to_str())?;
             jb.set_uint("process_id", *backend_pid)?;
             jb.set_uint("secret_key", *secret_key)?;
+            jb.close()?;
         }
         PgsqlBEMessage::ReadyForQuery(ReadyForQueryMessage {
             identifier: _,

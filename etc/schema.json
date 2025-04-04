@@ -3600,9 +3600,6 @@
                         "password_message": {
                             "type": "string"
                         },
-                        "process_id": {
-                            "type": "integer"
-                        },
                         "protocol_version": {
                             "type": "string"
                         },
@@ -3614,9 +3611,6 @@
                         },
                         "sasl_response": {
                             "type": "string"
-                        },
-                        "secret_key": {
-                            "type": "integer"
                         },
                         "simple_query": {
                             "type": "string"
@@ -3672,6 +3666,17 @@
                         },
                         "authentication_sasl_final": {
                             "type": "string"
+                        },
+                        "backend_key_data": {
+                            "type": "object",
+                            "properties": {
+                                "process_id": {
+                                    "type": "integer"
+                                },
+                                "secret_key": {
+                                    "type": "integer"
+                                }
+                            }
                         },
                         "code": {
                             "type": "string"
@@ -3748,9 +3753,6 @@
                                 "additionalProperties": true
                             }
                         },
-                        "process_id": {
-                            "type": "integer"
-                        },
                         "routine": {
                             "type": "string"
                         },
@@ -3761,9 +3763,6 @@
                                     "type": "integer"
                                 }
                             }
-                        },
-                        "secret_key": {
-                            "type": "integer"
                         },
                         "severity_localizable": {
                             "type": "string"
