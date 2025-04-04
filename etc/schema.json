@@ -3591,6 +3591,17 @@
                 "request": {
                     "type": "object",
                     "properties": {
+                        "cancel_request": {
+                            "type": "object",
+                            "properties": {
+                                "process_id": {
+                                    "type": "integer"
+                                },
+                                "secret_key": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
                         "message": {
                             "type": "string"
                         },
