@@ -3624,7 +3624,12 @@
                             "type": "string"
                         },
                         "simple_query": {
-                            "type": "string"
+                            "type": "object",
+                            "properties": {
+                                "statement": {
+                                    "type": "string"
+                                }
+                            }
                         },
                         "startup_parameters": {
                             "type": "object",
@@ -3689,9 +3694,6 @@
                                 }
                             }
                         },
-                        "code": {
-                            "type": "string"
-                        },
                         "copy_data_out": {
                             "type": "object",
                             "properties": {
@@ -3706,20 +3708,53 @@
                         "command_completed": {
                             "type": "string"
                         },
-                        "data_rows": {
-                            "type": "integer"
+                        "consolidated_data_rows": {
+                            "type": "object",
+                            "properties": {
+                                "data_rows": {
+                                    "type": "integer"
+                                },
+                                "data_size": {
+                                    "type": "integer"
+                                }
+                            }
                         },
-                        "field_count": {
-                            "type": "integer"
-                        },
-                        "file": {
-                            "type": "string"
-                        },
-                        "line": {
-                            "type": "string"
+                        "error_response": {
+                            "type": "object",
+                            "properties": {
+                                "code": {
+                                    "type": "string"
+                                },
+                                "file": {
+                                    "type": "string"
+                                },
+                                "line": {
+                                    "type": "string"
+                                },
+                                "message": {
+                                    "type": "string"
+                                },
+                                "routine": {
+                                    "type": "string"
+                                },
+                                "severity_localizable": {
+                                    "type": "string"
+                                },
+                                "severity_non_localizable": {
+                                    "type": "string"
+                                }
+                            }
                         },
                         "message": {
                             "type": "string"
+                        },
+                        "row_description": {
+                            "type": "object",
+                            "properties": {
+                                "field_count": {
+                                    "type": "integer"
+                                }
+                            }
                         },
                         "parameter_status": {
                             "type": "array",
@@ -3764,9 +3799,6 @@
                                 "additionalProperties": true
                             }
                         },
-                        "routine": {
-                            "type": "string"
-                        },
                         "copy_out_response": {
                             "type": "object",
                             "properties": {
@@ -3774,12 +3806,6 @@
                                     "type": "integer"
                                 }
                             }
-                        },
-                        "severity_localizable": {
-                            "type": "string"
-                        },
-                        "severity_non_localizable": {
-                            "type": "string"
                         },
                         "ssl_accepted": {
                             "type": "boolean"
