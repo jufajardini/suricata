@@ -106,7 +106,7 @@ fn log_request(req: &PgsqlFEMessage, flags: u32) -> Result<JsonBuilder, JsonErro
             js.set_uint("secret_key", *backend_key)?;
             js.close()?;
         }
-        PgsqlFEMessage::Terminate(TerminationMessage {
+        PgsqlFEMessage::Terminate(NoPayloadMessage {
             identifier: _,
             length: _,
         }) => {
