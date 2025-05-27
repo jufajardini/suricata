@@ -15,6 +15,7 @@ available directly via the :ref:`stats settings<suricata_yaml_outputs>`.
 For developers or for researching purposes, there are also simulation options
 exposed in debug mode and passed via command-line. These exist to force or
 simulate failures or errors and understand Suricata behavior under such conditions.
+See :any:`command-line-exception-policies` for those.
 
 .. _master-switch:
 
@@ -299,6 +300,7 @@ Suricata logs only the summary. If any further investigation is needed, it
 is recommended to enable per-app-proto exception policy error counters
 temporarily (for more, read :ref:`stats configuration<suricata_yaml_outputs>`).
 
+.. _command-line-exception-policies:
 
 Command-line Options for Simulating Exceptions
 ==============================================
@@ -337,6 +339,6 @@ Glossary
 Common abbreviations
 --------------------
 
-- applayer: application layer protocol
+- applayer/ app-layer: application layer protocol
 - memcap: (maximum) memory capacity available
 - defrag: defragmentation
