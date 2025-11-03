@@ -105,11 +105,17 @@ formatting changes:
 
     # Format all changes by commits on your branch:
     $ git clang-format first_commit_on_your_branch^
-    # Or with script:
-    $ scripts/clang-format.sh branch
 
 Note the usage of ``first_commit_on_your_branch^``, not ``main``, to avoid picking up
 new commits on ``main`` in case you've updated main since you've branched.
+
+.. code-block:: bash
+
+    # Or with script:
+    $ scripts/clang-format.sh branch
+
+Note that ``branch`` here is the command-line option for the script, and should
+be used as-is (and not replaced with a branch name).
 
 Check formatting
 ~~~~~~~~~~~~~~~~
@@ -126,12 +132,10 @@ change.
 Formatting a whole file
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-+--------------------------------------------------------------------+
-| **Note**                                                           |
-|                                                                    |
-| Do not reformat whole files by default, i.e. do not use            |
-| ``clang-format`` proper in general.                                |
-+--------------------------------------------------------------------+
+.. note::
+
+    Do not reformat whole files by default, i.e. do not use
+    ``clang-format`` proper in general.
 
 If you were ever to do so, formatting changes of existing code with clang-format
 shall be a different commit and must not be mixed with actual code changes.
