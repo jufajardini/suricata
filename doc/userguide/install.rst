@@ -19,13 +19,26 @@ Installing from the source distribution files gives the most control over the Su
 The Suricata source distribution files should be verified before building
 the source, see :doc:`verifying-source-files`.
 
-Basic steps::
+.. ifconfig:: version != ('9.0.0-dev')
 
-    tar xzvf suricata-7.0.0.tar.gz
-    cd suricata-7.0.0
-    ./configure
-    make
-    make install
+    Basic steps::
+
+        tar xzvf suricata-|version|.tar.gz
+        cd suricata-|version|
+        ./configure
+        make
+        make install
+
+
+.. ifconfig:: version == ('9.0.0-dev')
+
+    Basic steps, using Suricata 8.0 as example::
+
+        tar xzvf suricata-8.0.0.tar.gz
+        cd suricata-8.0.0
+        ./configure
+        make
+        make install
 
 This will install Suricata into ``/usr/local/bin/``, use the default
 configuration in ``/usr/local/etc/suricata/`` and will output to
