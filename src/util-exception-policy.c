@@ -87,6 +87,8 @@ static uint8_t ExceptionPolicyFlag(enum PacketDropReason drop_reason)
             return EXCEPTION_TARGET_FLAG_MIDSTREAM;
         case PKT_DROP_REASON_APPLAYER_ERROR:
             return EXCEPTION_TARGET_FLAG_APPLAYER_ERROR;
+        case PKT_DROP_REASION_STREAM_ASYNC:
+            return EXCEPTION_TARGET_FLAG_STREAM_ASYNC;
         default:
             return 0;
     }

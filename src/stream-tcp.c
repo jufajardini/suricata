@@ -204,6 +204,10 @@ ExceptionPolicyStatsSetts stream_midstream_disabled_eps_stats = {
 };
 // clang-format on
 
+// TODO add valid settings for stream-async policy, for:
+// async-oneside enabled
+// async-oneside disabled
+
 static int StreamTcpHandleFin(ThreadVars *tv, StreamTcpThread *, TcpSession *, Packet *);
 void StreamTcpReturnStreamSegments (TcpStream *);
 void StreamTcpInitConfig(bool);
@@ -609,6 +613,7 @@ void StreamTcpInitConfig(bool quiet)
     stream_config.reassembly_memcap_policy =
             ExceptionPolicyParse("stream.reassembly.memcap-policy", true);
     stream_config.midstream_policy = ExceptionPolicyMidstreamParse(stream_config.midstream);
+    stream_config.stream_async_policy = ExceptionPolicyParse("stream.async-policy", false);
 
     if (!quiet) {
         SCLogConfig("stream.\"inline\": %s",
@@ -919,6 +924,11 @@ enum ExceptionPolicy StreamTcpReassemblyMemcapGetExceptionPolicy(void)
 enum ExceptionPolicy StreamMidstreamGetExceptionPolicy(void)
 {
     return stream_config.midstream_policy;
+}
+
+enum ExceptionPolicy StreamTcpAsyncGetExceptionPolicy(void)
+{
+    return stream_config.stream_async_policy;
 }
 
 /** \internal
@@ -6182,6 +6192,8 @@ TmEcode StreamTcpThreadInit(ThreadVars *tv, void *initdata, void **data)
                 &stream_midstream_disabled_eps_stats, stream_config.midstream_policy,
                 "exception_policy.tcp.midstream.", IsMidstreamExceptionPolicyStatsValid);
     }
+
+// WIP    ExceptionPolicySetStatsCounters(tv, &stt->counter_tcp_stream_async_eps, stream_config.stream_async_policy)
 
     stt->counter_tcp_wrong_thread = StatsRegisterCounter("tcp.pkt_on_wrong_thread", &tv->stats);
     stt->counter_tcp_ack_unseen_data = StatsRegisterCounter("tcp.ack_unseen_data", &tv->stats);
