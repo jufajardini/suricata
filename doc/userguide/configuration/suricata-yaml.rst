@@ -1331,11 +1331,11 @@ asynchronous. To make sure Suricata will check the one part it does see,
 instead of getting confused, the option 'async-oneside' is brought to life. By
 default the option is set to 'false'.
 
-Suricata inspects content in the normal/IDS mode in chunks. In the
-inline/IPS mode it does that on the sliding window way (see example
-..) In the case Suricata is set in inline mode, it has to inspect
-packets immediately before sending it to the receiver. This way
-Suricata is able to drop a packet directly if needed.(see example …)
+Suricata inspects content in the normal/IDS mode in chunks. (See example 11).
+In the inline/IPS mode it does that on the sliding window way. (See example 12).
+In the case Suricata is set in inline mode, it has to inspect packets immediately
+before sending it to the receiver. This way Suricata is able to drop a packet
+directly if needed. (see example...)
 It is important for Suricata to note which operating system it is
 dealing with, because operating systems differ in the way they process
 anomalies in streams. See :ref:`host-os-policy`.
