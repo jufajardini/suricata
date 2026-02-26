@@ -80,6 +80,7 @@ typedef struct TcpStreamCnf_ {
     enum ExceptionPolicy ssn_memcap_policy;
     enum ExceptionPolicy reassembly_memcap_policy;
     enum ExceptionPolicy midstream_policy;
+    //enum ExceptionPolicy stream_async_policy;
     enum TcpStreamUrgentHandling urgent_policy;
     enum TcpStreamUrgentHandling urgent_oob_limit_policy;
 
@@ -108,6 +109,8 @@ typedef struct StreamTcpThread_ {
     StatsCounterId counter_tcp_midstream_pickups;
     /** exception policy stats */
     ExceptionPolicyCounters counter_tcp_midstream_eps;
+    /** stream-async exception policy stats */
+    //ExceptionPolicyCounters counter_tcp_stream_async;
     /** wrong thread */
     StatsCounterId counter_tcp_wrong_thread;
     /** ack for unseen data */
