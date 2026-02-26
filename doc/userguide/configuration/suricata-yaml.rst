@@ -745,7 +745,7 @@ The engine shall then try to club the rules that use the ports defined
 in groups of their own and put them on top of the list of rules to be matched
 against traffic on "priority".
 
-*Example 4	Detection-engine grouping tree*
+**Example 4	Detection-engine grouping tree**
 
 .. image:: suricata-yaml/grouping_tree.png
 
@@ -756,7 +756,7 @@ against traffic on "priority".
   sp              Stands for source port.
   dp              Stands for destination port.
 
-*Example 5       Detail grouping tree*
+**Example 5       Detail grouping tree**
 
 .. image:: suricata-yaml/grouping_tree_detail.png
 
@@ -836,7 +836,7 @@ These are the proceedings:
 2) The packed will be analyzed by the Multi-pattern-matcher in search of patterns that match.
 3) All patterns that match, will be further processed by Suricata (signatures).
 
-*Example 8	Multi-pattern-matcher*
+**Example 8	Multi-pattern-matcher**
 
 .. image:: suricata-yaml/MPM2.png
 
@@ -880,7 +880,7 @@ application layer has three tasks:
 
 # In Outputs all alerts and events will be processed.
 
-*Example 6	Threading*
+**Example 6	Threading**
 
 .. image:: suricata-yaml/threading.png
 
@@ -913,7 +913,7 @@ packets to process. The detect threads running on other cores will
 process more packets. This is only the case after setting the option
 to 'yes'.
 
-*Example 7	Balancing workload*
+**Example 7	Balancing workload**
 
 .. image:: suricata-yaml/balancing_workload.png
 
@@ -1149,11 +1149,11 @@ Tuple (protocol, source IP, destination IP, source-port,
 destination-port), belong to the same flow. Packets belonging to a
 flow are connected to it internally.
 
-*Example 9	Flow*
+**Example 9	Flow**
 
 .. image:: suricata-yaml/flow.png
 
-*Example 10	Tuple*
+**Example 10	Tuple**
 
 .. image:: suricata-yaml/Tuple1.png
 
@@ -1433,7 +1433,7 @@ network inspection.
       check-overlap-different-data: true
 
 
-*Example 15        Stream reassembly*
+**Example 15        Stream reassembly**
 
 .. image:: suricata-yaml/reassembly1.png
 
@@ -2571,19 +2571,19 @@ Add the numbers of the options repeat_mark and route_queue to the NFQ-rule::
      route-queue: 2               #Here you can assign the queue-number of the tool that Suricata has to
                                   #send the packets to after processing them.
 
-*Example 1 NFQ1*
+**Example 1 NFQ1**
 
 mode: accept
 
 .. image:: suricata-yaml/NFQ.png
 
-*Example 2 NFQ*
+**Example 2 NFQ**
 
 mode: repeat
 
 .. image:: suricata-yaml/NFQ1.png
 
-*Example 3 NFQ*
+**Example 3 NFQ**
 
 mode: route
 
@@ -2610,7 +2610,7 @@ firewall at rule number 5500:
   ipfw:
     ipfw-reinjection-rule-number: 5500
 
-*Example 16	Ipfw-reinjection.*
+**Example 16	Ipfw-reinjection.**
 
 .. image:: suricata-yaml/ipfw_reinjection.png
 
@@ -2766,7 +2766,7 @@ system your IP-address makes use of, so Suricata knows how to process
 fragmented packets and streams. For example in stream-reassembly there
 can be packets with overlapping payloads.
 
-*Example 17	Overlapping payloads*
+**Example 17	Overlapping payloads**
 
 .. image:: suricata-yaml/overlap.png
 
