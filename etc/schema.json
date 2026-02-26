@@ -7404,6 +7404,11 @@
                             "type": "object",
                             "additionalProperties": false,
                             "properties": {
+                                "async": {
+                                    "description":
+                                        "How many times stream async exception policy was triggered, and which one was applied",
+                                        "$ref": "#/$defs/exceptionPolicy"
+                                },
                                 "midstream": {
                                     "description":
                                         "How many times midstream exception policy was applied, and which one",
@@ -7902,6 +7907,10 @@
                                 "rules": {
                                     "type": "integer",
                                     "description": "Number of packets dropped due to rule actions"
+                                },
+                                "stream_async": {
+                                    "type": "integer",
+                                    "description": "Number of packets dropped due to stream async exception policy"
                                 },
                                 "stream_error": {
                                     "type": "integer",

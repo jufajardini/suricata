@@ -85,6 +85,11 @@ Exception policies are implemented for:
      - midstream-policy
      - Flow
      - If a session is picked up midstream, apply the midstream policy to the flow.
+   * - stream.async-oneside
+     - async-policy
+     - Packet
+     - If the engine detects an async stream, apply the async policy to the packet.
+       **Policy can only be applied to the packet.**
    * - stream.reassembly.memcap
      - memcap-policy
      - Flow or packet
@@ -239,6 +244,81 @@ In particular, these interactions seem probable for the following policies,
 
 .. _eps_output:
 
+Exception Policy: Async Stream
+******************************
+
+It is possible to define an exception policy when Suricata encounters an
+asynchronous TCP stream. The valid policies vary based on whether the setting
+:ref:`stream.async-oneside<config_async-oneside>` is enabled or not.
+
+The valid policies are:
+
+.. list-table:: **Valid Policies: Async One-side - IDS Mode**
+   :widths: auto
+   :header-rows: 1
+   :stub-columns: 1
+
+   * - Exception Policy
+     - ENABLED (stream.async-oneside=true)
+     - DISABLED (stream.async-oneside=false)
+   * - Ignore (default)
+     - Session and app-layer traffic tracked and parsed, log app-layer traffic, **do** detection.
+     - Session not tracked. No app-layer parsing or logging. No stream reassembly. No detection.
+   * - Drop-flow
+     - Not valid.*
+     - Not valid.*
+   * - Drop-packet
+     - Not valid.*
+     - Not valid.*
+   * - Reject / Rejectboth
+     - Not valid.*
+     - Not valid.*
+   * - Pass-flow
+     - Not valid.*
+     - Not valid.*
+   * - Pass-packet
+     - Valid.*
+     - Valid.*
+   * - Bypass
+     - Not valid.*
+     - Not valid.*
+   * - Auto
+     - Policy applied: "ignore".
+     - Policy applied: "ignore".
+
+.. list-table:: **Valid Policies: Async One-side - IPS Mode**
+   :widths: auto
+   :header-rows: 1
+   :stub-columns: 1
+
+   * - Exception Policy
+     - ENABLED (stream.async-oneside=true)
+     - DISABLED (stream.async-oneside=false)
+   * - Ignore
+     - Session and app-layer traffic tracked and parsed, log app-layer traffic, **do** detection.
+     - Session not tracked. No app-layer parsing or logging. No stream reassembly. No detection.
+   * - Drop-flow
+     - Not valid.*
+     - Not valid.*
+   * - Drop-packet (default)
+     - Not valid.*
+     - Valid.*
+   * - Reject / Rejectboth
+     - Not valid.*
+     - Valid.*
+   * - Pass-flow
+     - Not valid.*
+     - Not valid.*
+   * - Pass-packet
+     - Valid.*
+     - Valid.*
+   * - Bypass
+     - Not valid.*
+     - Not valid.*
+   * - Auto
+     - Policy applied: "ignore".
+     - Policy applied: "drop-packet".
+
 Log Output
 **********
 
@@ -299,17 +379,19 @@ be logged when exception policies are enabled:
 
    * - Setting
      - Counters
-   * - stream.memcap
+   * - stream.memcap-policy
      - exception_policy.tcp.ssn_memcap
-   * - stream.reassembly.memcap
+   * - stream.reassembly.memcap-policy
      - exception_policy.tcp.reassembly.memcap
-   * - stream.midstream
+   * - stream.midstream-policy
      - exception_policy.tcp.midstream
-   * - defrag.memcap
+   * - stream.async-policy
+     - exception_policy.tcp.stream.async
+   * - defrag.memcap-policy
      - exception_policy.defrag.memcap
-   * - flow.memcap
+   * - flow.memcap-policy
      - exception_policy.flow.memcap
-   * - app-layer.error
+   * - app-layer.error-policy
      - * exception_policy.app_layer.error
        * app_layer.error.exception_policy
 

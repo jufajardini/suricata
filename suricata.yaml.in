@@ -1654,6 +1654,7 @@ flow-timeouts:
 #                               # "pass-flow", "bypass", "drop-packet",
 #                               # "pass-packet", "reject" or "ignore" default is "ignore"
 #   async-oneside: false        # don't enable async stream handling
+#   async-policy: ignore        # The exception policy value can be "drop-packet", "pass-packet", "reject" or "ignore"
 #   inline: no                  # stream inline mode
 #   drop-invalid: yes           # in inline mode, drop packets that are invalid with regards to streaming engine
 #   max-syn-queued: 10          # Max different SYNs to queue

@@ -1314,6 +1314,8 @@ To mitigate Suricata from being overloaded by fast session creation,
 the option prealloc-sessions instructs Suricata to keep a number of
 sessions ready in memory.
 
+.. _config_async-oneside:
+
 A TCP-session starts with the three-way-handshake. After that, data
 can be sent and received. A session can last a long time. It can happen
 that Suricata will be started after a few TCP sessions have already been

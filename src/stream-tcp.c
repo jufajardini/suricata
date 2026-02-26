@@ -204,6 +204,61 @@ ExceptionPolicyStatsSetts stream_midstream_disabled_eps_stats = {
 };
 // clang-format on
 
+/* Settings order as in the enum */
+// clang-format off
+ExceptionPolicyStatsSetts stream_async_enabled_eps_stats = {
+    .valid_settings_ids = {
+    /* EXCEPTION_POLICY_NOT_SET */      false,
+    /* EXCEPTION_POLICY_AUTO */         false,
+    /* EXCEPTION_POLICY_PASS_PACKET */  true,
+    /* EXCEPTION_POLICY_PASS_FLOW */    false,
+    /* EXCEPTION_POLICY_BYPASS_FLOW */  false,
+    /* EXCEPTION_POLICY_DROP_PACKET */  false,
+    /* EXCEPTION_POLICY_DROP_FLOW */    false,
+    /* EXCEPTION_POLICY_REJECT */       false,
+    /* EXCEPTION_POLICY_REJECT_BOTH */  false,
+    },
+    .valid_settings_ips = {
+    /* EXCEPTION_POLICY_NOT_SET */      false,
+    /* EXCEPTION_POLICY_AUTO */         false,
+    /* EXCEPTION_POLICY_PASS_PACKET */  true,
+    /* EXCEPTION_POLICY_PASS_FLOW */    false,
+    /* EXCEPTION_POLICY_BYPASS_FLOW */  false,
+    /* EXCEPTION_POLICY_DROP_PACKET */  false,
+    /* EXCEPTION_POLICY_DROP_FLOW */    false,
+    /* EXCEPTION_POLICY_REJECT */       false,
+    /* EXCEPTION_POLICY_REJECT_BOTH */  false,
+    },
+};
+// clang-format off
+
+// clang-format on
+ExceptionPolicyStatsSetts stream_async_disabled_eps_stats = {
+    .valid_settings_ids = {
+    /* EXCEPTION_POLICY_NOT_SET */      false,
+    /* EXCEPTION_POLICY_AUTO */         false,
+    /* EXCEPTION_POLICY_PASS_PACKET */  true,
+    /* EXCEPTION_POLICY_PASS_FLOW */    false,
+    /* EXCEPTION_POLICY_BYPASS_FLOW */  false,
+    /* EXCEPTION_POLICY_DROP_PACKET */  false,
+    /* EXCEPTION_POLICY_DROP_FLOW */    false,
+    /* EXCEPTION_POLICY_REJECT */       true,
+    /* EXCEPTION_POLICY_REJECT_BOTH */  true,
+    },
+    .valid_settings_ips = {
+    /* EXCEPTION_POLICY_NOT_SET */      false,
+    /* EXCEPTION_POLICY_AUTO */         false,
+    /* EXCEPTION_POLICY_PASS_PACKET */  true,
+    /* EXCEPTION_POLICY_PASS_FLOW */    false,
+    /* EXCEPTION_POLICY_BYPASS_FLOW */  false,
+    /* EXCEPTION_POLICY_DROP_PACKET */  true,
+    /* EXCEPTION_POLICY_DROP_FLOW */    false,
+    /* EXCEPTION_POLICY_REJECT */       true,
+    /* EXCEPTION_POLICY_REJECT_BOTH */  true,
+    },
+};
+// clang-format on
+
 static int StreamTcpHandleFin(ThreadVars *tv, StreamTcpThread *, TcpSession *, Packet *);
 void StreamTcpReturnStreamSegments (TcpStream *);
 void StreamTcpInitConfig(bool);
@@ -609,6 +664,7 @@ void StreamTcpInitConfig(bool quiet)
     stream_config.reassembly_memcap_policy =
             ExceptionPolicyParse("stream.reassembly.memcap-policy", true);
     stream_config.midstream_policy = ExceptionPolicyMidstreamParse(stream_config.midstream);
+    stream_config.async_policy = ExceptionPolicyParse("stream.async-policy", false);
 
     if (!quiet) {
         SCLogConfig("stream.\"inline\": %s",
@@ -906,6 +962,15 @@ static void StreamTcpSsnMemcapExceptionPolicyStatsIncr(
     }
 }
 
+static void StreamTcpAsyncExceptionPolicyStatsIncr(
+    ThreadVars *tv, StreamTcpThread *stt, enum ExceptionPolicy policy)
+{
+    const StatsCounterId id = stt->counter_tcp_stream_async_eps.eps_id[policy];
+    if (likely(tv && id.id > 0)) {
+        StatsCounterIncr(&tv->stats, id);
+    }
+}
+
 enum ExceptionPolicy StreamTcpSsnMemcapGetExceptionPolicy(void)
 {
     return stream_config.ssn_memcap_policy;
@@ -919,6 +984,11 @@ enum ExceptionPolicy StreamTcpReassemblyMemcapGetExceptionPolicy(void)
 enum ExceptionPolicy StreamMidstreamGetExceptionPolicy(void)
 {
     return stream_config.midstream_policy;
+}
+
+enum ExceptionPolicy StreamTcpAsyncGetExceptionPolicy(void)
+{
+    return stream_config.async_policy;
 }
 
 /** \internal
@@ -1143,6 +1213,20 @@ static bool IsMidstreamExceptionPolicyStatsValid(enum ExceptionPolicy policy)
     return stream_midstream_disabled_eps_stats.valid_settings_ids[policy];
 }
 
+static bool IsStreamTcpAsyncExceptionPolicyStatsValid(enum ExceptionPolicy policy)
+{
+    if(EngineModeIsIPS()) {
+        if (stream_config.async_policy) {
+            return stream_async_enabled_eps_stats.valid_settings_ips[policy];
+        }
+        return stream_async_disabled_eps_stats.valid_settings_ips[policy];
+    }
+    if (stream_config.async_policy) {
+        return stream_async_enabled_eps_stats.valid_settings_ids[policy];
+    }
+    return stream_async_disabled_eps_stats.valid_settings_ids[policy];
+}
+
 static void StreamTcpMidstreamExceptionPolicyStatsIncr(
         ThreadVars *tv, StreamTcpThread *stt, enum ExceptionPolicy policy)
 {
@@ -1240,6 +1324,7 @@ static int StreamTcpPacketStateNone(
 
         ssn->flags = STREAMTCP_FLAG_MIDSTREAM;
         ssn->flags |= STREAMTCP_FLAG_MIDSTREAM_ESTABLISHED;
+
         if (stream_config.async_oneside) {
             SCLogDebug("ssn %p: =~ ASYNC", ssn);
             ssn->flags |= STREAMTCP_FLAG_ASYNC;
@@ -1305,6 +1390,10 @@ static int StreamTcpPacketStateNone(
         /* Drop reason will only be used if midstream policy is set to fail closed */
         ExceptionPolicyApply(p, stream_config.midstream_policy, PKT_DROP_REASON_STREAM_MIDSTREAM);
         StreamTcpMidstreamExceptionPolicyStatsIncr(tv, stt, stream_config.midstream_policy);
+
+        /* Stream async policy, server -> client */
+        ExceptionPolicyApply(p, stream_config.async_policy, PKT_DROP_REASON_STREAM_ASYNC);
+        StreamTcpAsyncExceptionPolicyStatsIncr(tv, stt, stream_config.async_policy);
 
         if (!stream_config.midstream && !stream_config.async_oneside) {
             SCLogDebug("Midstream not enabled, so won't pick up a session");
@@ -2398,6 +2487,8 @@ static int StreamTcpPacketStateSynSent(
         /* Handle the asynchronous stream, when we receive a SYN packet
            and now instead of receiving a SYN/ACK we receive a ACK from the
            same host, which sent the SYN, this suggests the ASYNC streams.*/
+
+        // TODO Should we apply ExceptionPolicy Async here?
         if (!stream_config.async_oneside)
             return 0;
 
@@ -2950,36 +3041,42 @@ static int HandleEstablishedPacketToServer(
              * async and other stream is not updating it anymore :( */
             StreamTcpUpdateLastAck(ssn, &ssn->client, seq);
 
-        } else if (SEQ_EQ(ssn->client.next_seq, seq) && stream_config.async_oneside &&
-                   (ssn->flags & STREAMTCP_FLAG_MIDSTREAM)) {
-            SCLogDebug("ssn %p: server => Asynchronous stream, packet SEQ."
-                       " %" PRIu32 ", payload size %" PRIu32 " (%" PRIu32 "), "
-                       "ssn->client.last_ack %" PRIu32 ", ssn->client.next_win "
-                       "%" PRIu32 "(%" PRIu32 ")",
-                    ssn, seq, p->payload_len, seq + p->payload_len, ssn->client.last_ack,
-                    ssn->client.next_win, seq + p->payload_len - ssn->client.next_win);
+            ExceptionPolicyApply(p, stream_config.async_policy, PKT_DROP_REASON_STREAM_ASYNC);
+            StreamTcpAsyncExceptionPolicyStatsIncr(tv, stt, stream_config.async_policy);
 
-            /* it seems we missed SYN and SYN/ACK packets of this session.
-             * Update the last_ack to current seq number as the session
-             * is async and other stream is not updating it anymore :( */
-            StreamTcpUpdateLastAck(ssn, &ssn->client, seq);
-            ssn->flags |= STREAMTCP_FLAG_ASYNC;
+        } else if (stream_config.async_oneside) {
+            if (SEQ_EQ(ssn->client.next_seq, seq) && (ssn->flags & STREAMTCP_FLAG_MIDSTREAM))
+            {
+                SCLogDebug("ssn %p: server => Asynchronous stream, packet SEQ."
+                        " %" PRIu32 ", payload size %" PRIu32 " (%" PRIu32 "), "
+                        "ssn->client.last_ack %" PRIu32 ", ssn->client.next_win "
+                        "%" PRIu32 "(%" PRIu32 ")",
+                        ssn, seq, p->payload_len, seq + p->payload_len, ssn->client.last_ack,
+                        ssn->client.next_win, seq + p->payload_len - ssn->client.next_win);
 
-        } else if (SEQ_EQ(ssn->client.last_ack, (ssn->client.isn + 1)) &&
-                   stream_config.async_oneside && (ssn->flags & STREAMTCP_FLAG_MIDSTREAM)) {
-            SCLogDebug("ssn %p: server => Asynchronous stream, packet SEQ"
-                       " %" PRIu32 ", payload size %" PRIu32 " (%" PRIu32 "), "
-                       "ssn->client.last_ack %" PRIu32 ", ssn->client.next_win "
-                       "%" PRIu32 "(%" PRIu32 ")",
-                    ssn, seq, p->payload_len, seq + p->payload_len, ssn->client.last_ack,
-                    ssn->client.next_win, seq + p->payload_len - ssn->client.next_win);
+                /* it seems we missed SYN and SYN/ACK packets of this session.
+                * Update the last_ack to current seq number as the session
+                * is async and other stream is not updating it anymore :( */
+                StreamTcpUpdateLastAck(ssn, &ssn->client, seq);
+                ssn->flags |= STREAMTCP_FLAG_ASYNC;
 
-            /* it seems we missed SYN and SYN/ACK packets of this session.
-             * Update the last_ack to current seq number as the session
-             * is async and other stream is not updating it anymore :(*/
-            StreamTcpUpdateLastAck(ssn, &ssn->client, seq);
-            ssn->flags |= STREAMTCP_FLAG_ASYNC;
+            } else if (SEQ_EQ(ssn->client.last_ack, (ssn->client.isn + 1))  && (ssn->flags & STREAMTCP_FLAG_MIDSTREAM)) {
+                SCLogDebug("ssn %p: server => Asynchronous stream, packet SEQ"
+                           " %" PRIu32 ", payload size %" PRIu32 " (%" PRIu32 "), "
+                           "ssn->client.last_ack %" PRIu32 ", ssn->client.next_win "
+                           "%" PRIu32 "(%" PRIu32 ")",
+                        ssn, seq, p->payload_len, seq + p->payload_len, ssn->client.last_ack,
+                        ssn->client.next_win, seq + p->payload_len - ssn->client.next_win);
 
+                /* it seems we missed SYN and SYN/ACK packets of this session.
+                 * Update the last_ack to current seq number as the session
+                 * is async and other stream is not updating it anymore :(*/
+                StreamTcpUpdateLastAck(ssn, &ssn->client, seq);
+                ssn->flags |= STREAMTCP_FLAG_ASYNC;
+
+            }
+            ExceptionPolicyApply(p, stream_config.async_policy, PKT_DROP_REASON_STREAM_ASYNC);
+            StreamTcpAsyncExceptionPolicyStatsIncr(tv, stt, stream_config.async_policy);
         /* if last ack is beyond next_seq, we have accepted ack's for missing data.
          * In this case we do accept the data before last_ack if it is (partly)
          * beyond next seq */
@@ -3135,6 +3232,9 @@ static int HandleEstablishedPacketToClient(
                     ssn->server.next_win, seq + p->payload_len - ssn->server.next_win);
 
             ssn->server.last_ack = seq;
+
+            ExceptionPolicyApply(p, stream_config.async_policy, PKT_DROP_REASON_STREAM_ASYNC);
+            StreamTcpAsyncExceptionPolicyStatsIncr(tv, stt, stream_config.async_policy);
 
             /* if last ack is beyond next_seq, we have accepted ack's for missing data.
              * In this case we do accept the data before last_ack if it is (partly)
@@ -6181,6 +6281,14 @@ TmEcode StreamTcpThreadInit(ThreadVars *tv, void *initdata, void **data)
         ExceptionPolicySetStatsCounters(tv, &stt->counter_tcp_midstream_eps,
                 &stream_midstream_disabled_eps_stats, stream_config.midstream_policy,
                 "exception_policy.tcp.midstream.", IsMidstreamExceptionPolicyStatsValid);
+    }
+
+    if (stream_config.async_policy) {
+        ExceptionPolicySetStatsCounters(tv, &stt->counter_tcp_stream_async_eps, &stream_async_enabled_eps_stats,
+                stream_config.async_policy, "exception_policy.tcp.async.", IsStreamTcpAsyncExceptionPolicyStatsValid);
+    } else {
+        ExceptionPolicySetStatsCounters(tv, &stt->counter_tcp_stream_async_eps, &stream_async_disabled_eps_stats,
+                stream_config.async_policy, "exception_policy.tcp.async.", IsStreamTcpAsyncExceptionPolicyStatsValid);
     }
 
     stt->counter_tcp_wrong_thread = StatsRegisterCounter("tcp.pkt_on_wrong_thread", &tv->stats);

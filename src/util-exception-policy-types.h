@@ -50,6 +50,7 @@ enum ExceptionPolicy {
 #define EXCEPTION_TARGET_FLAG_FLOW_MEMCAP       BIT_U8(3)
 #define EXCEPTION_TARGET_FLAG_MIDSTREAM         BIT_U8(4)
 #define EXCEPTION_TARGET_FLAG_APPLAYER_ERROR    BIT_U8(5)
+#define EXCEPTION_TARGET_FLAG_STREAM_ASYNC      BIT_U8(6)
 
 typedef struct ExceptionPolicyCounters_ {
     /* Follows enum order */
