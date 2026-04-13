@@ -1067,6 +1067,8 @@ void CaptureStatsUpdate(ThreadVars *tv, const Packet *p)
         StatsCounterIncr(&tv->stats, s->counter_ips_blocked);
     } else if (unlikely(p->flags & PKT_STREAM_MODIFIED)) {
         StatsCounterIncr(&tv->stats, s->counter_ips_replaced);
+    } else if (EngineModeIsFirewall() && PacketCheckAction(p, ACTION_ACCEPT)) {
+        StatsCounterIncr(&tv->stats, s->counter_fw_accepted);
     } else {
         StatsCounterIncr(&tv->stats, s->counter_ips_accepted);
     }
@@ -1102,6 +1104,7 @@ void CaptureStatsSetup(ThreadVars *tv)
         s->counter_ips_blocked = StatsRegisterCounter("ips.blocked", &tv->stats);
         s->counter_ips_rejected = StatsRegisterCounter("ips.rejected", &tv->stats);
         s->counter_ips_replaced = StatsRegisterCounter("ips.replaced", &tv->stats);
+        s->counter_fw_accepted = StatsRegisterCounter("firewall.accepted", &tv->stats);
         for (int i = PKT_DROP_REASON_NOT_SET; i < PKT_DROP_REASON_FW_RULES; i++) {
             const char *name = PacketDropReasonToJsonString(i);
             if (name != NULL)
