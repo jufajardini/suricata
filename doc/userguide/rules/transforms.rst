@@ -469,6 +469,9 @@ The subslice transform requires parameters:
     When not specified [DEFAULT], an empty buffer will be produced on
     which ``bsize:0`` will match. [OPTIONAL]
 
+Usage
+~~~~~
+
 Specify the subslice desired -- `nbytes` and `truncate` are optional:
 
 Format::
@@ -482,9 +485,10 @@ When ``truncate`` is not specified and the value of ``offset + nbytes`` exceeds
 the buffer length, and empty buffer will be produced such that ``bsize: 0`` will
 match.
 
-The following examples use an input buffer of ``This is Suricata``.
-
 Examples
+~~~~~~~~
+
+The following examples use an input buffer of ``This is Suricata``.
 
 The subslice will be a copy of the input buffer but omit the input buffer's first byte.
 The subslice is ``his is Suricata``::
@@ -506,6 +510,64 @@ This example will create a subslice from the last 3 bytes of the input
 buffer and create ``ata``::
 
     subslice: -3;
+
+
+Summary of Truncate Behavior: Edge Cases
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following table summarizes how ``truncate`` handles edge cases with
+the input buffer ``curl/7.64.1`` (11 bytes):
+
+
++-------------------------------+---------------------+---------------------------+
+| Transform                     | No truncate         | With truncate             |
++===============================+=====================+===========================+
+| ``subslice: 5;``              | **7.64.1** (6 bytes)| **7.64.1** (6 bytes)      |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: -20;``            | Empty buffer        | Full buffer (start at 0)  |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: -20, 5;``         | Empty buffer        | **curl/** (5 bytes)       |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: 0, -30;``         | Empty buffer        | Empty buffer (end at 0)   |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: 0, -8;``          | **cur** (3 bytes)   | **cur** (3 bytes)         |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: -20, -30;``       | Empty buffer        | Empty buffer              |
++-------------------------------+---------------------+---------------------------+
+| ``subslice: 0, 30;``          | Empty buffer        | Full buffer (11 bytes)    |
++-------------------------------+---------------------+---------------------------+
+
+
+Truncation Behavior
+~~~~~~~~~~~~~~~~~~~
+
+When the buffer has less bytes than ``offset + nbytes``, the transform
+will either trim the resulting buffer as though ``offset + nbytes == buffer_length``
+or produce an empty buffer on which `bsize:0` would match. The behavior
+is determined by the inclusion of ``truncate`` with the keyword.
+
+This example receives an input buffer with the value ``curl/7.64.1`` and
+produces ``curl/7.64.1``::
+
+    subslice: 0, 30;
+
+With truncation off, the default, the buffer produced by the transform
+with the same input buffer would be the empty string: ``""`` and
+``bsize:0`` would match::
+
+    subslice: 0, 30;
+
+When ``truncate`` is specified,  ``nbytes + offset`` is reduced
+such that they equal the input buffer length. In the following example,
+the transform produces ``curl/7.64.1``::
+
+    subslice: 0, 30, truncate;
+
+Specifying ``truncate`` does not require ``nbytes`` to be specified:
+such that they equal the input buffer length. In the following example,
+the transform produces ``curl/7.64.1``::
+
+    subslice: 0, truncate;
 
 Negative Offset Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -545,58 +607,3 @@ However, a moderate negative ``nbytes`` works normally. For example,
 producing ``This is`` (with a trailing space)::
 
     subslice: 0, -8, truncate;
-
-Truncation Behavior
-~~~~~~~~~~~~~~~~~~~
-
-When the buffer has less bytes than ``offset + nbytes``, the transform
-will either trim the resulting buffer as though ``offset + nbytes == buffer_length``
-or produce an empty buffer on which `bsize:0` would match. The behavior
-is determined by the inclusion of ``truncate`` with the keyword.
-
-This example receives an input buffer with the value ``curl/7.64.1`` and
-produces ``curl/7.64.1``::
-
-    subslice: 0, 30;
-
-With truncation off, the default, the buffer produced by the transform
-with the same input buffer would be the empty string: ``""`` and
-``bsize:0`` would match::
-
-    subslice: 0, 30;
-
-When ``truncate`` is specified,  ``nbytes + offset`` is reduced
-such that they equal the input buffer length. In the following example,
-the transform produces ``curl/7.64.1``::
-
-    subslice: 0, 30, truncate;
-
-Specifying ``truncate`` does not require ``nbytes`` to be specified:
-such that they equal the input buffer length. In the following example,
-the transform produces ``curl/7.64.1``::
-
-    subslice: 0, truncate;
-
-Summary of Truncate Behavior with Negative Values
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The following table summarizes how ``truncate`` handles edge cases with
-the input buffer ``curl/7.64.1`` (11 bytes):
-
-+-------------------------------+---------------------+---------------------------+
-| Transform                     | Without truncate    | With truncate             |
-+===============================+=====================+===========================+
-| ``subslice: 5;``              | ``7.64.1`` (6 bytes)| ``7.64.1`` (6 bytes)      |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: -20;``            | Empty buffer        | Full buffer (start at 0)  |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: -20, 5;``         | Empty buffer        | ``curl/`` (5 bytes)       |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: 0, -30;``         | Empty buffer        | Empty buffer (end at 0)   |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: 0, -8;``          | ``cur`` (3 bytes)   | ``cur`` (3 bytes)         |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: -20, -30;``       | Empty buffer        | Empty buffer              |
-+-------------------------------+---------------------+---------------------------+
-| ``subslice: 0, 30;``          | Empty buffer        | Full buffer (11 bytes)    |
-+-------------------------------+---------------------+---------------------------+
