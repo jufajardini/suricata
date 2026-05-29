@@ -348,6 +348,47 @@ static void PrintFeatureList(const SigTableElmt *e, char sep)
     }
 }
 
+/** \brief List app-layer proto states associated with each app-proto keyword.
+ *
+ */
+static void ListAppLayerStates(void) {
+    for (AppProto proto = 0; proto < g_alproto_max; proto++) {
+        if (!AppProtoIsValid(proto))
+            continue;
+
+        const uint8_t complete_state_ts = (const uint8_t)AppLayerParserGetStateProgressCompletionStatus(proto, STREAM_TOSERVER);
+
+        printf(" === %s ===\n", AppProtoToString(proto));
+        for (uint8_t state = 0; state <= complete_state_ts; state++) {
+            const char *name = AppLayerParserGetStateNameById(IPPROTO_TCP, proto, state, STREAM_TOSERVER);
+            if (name == NULL) {
+                if (state == 0)
+                    name = "request-started";
+                else if (state == complete_state_ts)
+                    name = "request-complete";
+                else
+                    name = "unknown";
+            }
+
+            printf("app:%s:%s\n", AppProtoToString(proto), name);
+        }
+        const uint8_t complete_state_tc = (const uint8_t)AppLayerParserGetStateProgressCompletionStatus(proto, STREAM_TOCLIENT);
+        for (uint8_t state = 0; state <= complete_state_tc; state++) {
+            const char *name = AppLayerParserGetStateNameById(IPPROTO_TCP, proto, state, STREAM_TOCLIENT);
+            if (name == NULL) {
+                if (state == 0)
+                    name = "response-started";
+                else if (state == complete_state_tc)
+                    name = "response-complete";
+                else
+                    name = "unknown";
+            }
+            printf("app:%s:%s\n", AppProtoToString(proto), name);
+        }
+        printf("\n");
+    }
+}
+
 static void SigMultilinePrint(size_t i, const char *prefix)
 {
     if (sigmatch_table[i].desc) {
@@ -431,6 +472,10 @@ int SigTableList(const char *keyword)
                 SigMultilinePrint(i, "\t");
             }
         }
+    } else if (strcmp("app-layer-state", keyword) == 0) {
+        SCLogNotice("Invoking listing all app-layer states");
+        ListAppLayerStates();
+        return TM_ECODE_DONE;
     } else {
         for (i = 0; i < size; i++) {
             if ((sigmatch_table[i].name != NULL) &&
