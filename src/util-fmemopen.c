@@ -40,6 +40,9 @@
 #ifdef USE_FMEM_WRAPPER
 
 #ifdef OS_WIN32
+#ifdef UNITTESTS
+#include <io.h>
+#endif /* UNITTESTS */
 
 /**
  * \brief portable version of SCFmemopen for Windows works on top of real temp files
@@ -65,7 +68,20 @@ FILE *SCFmemopen(void *buf, size_t size, const char *mode)
     fwrite(buf, size, 1, f);
     fclose(f);
 
+#ifdef UNITTESTS
+    /* Reopen with FILE_FLAG_DELETE_ON_CLOSE so the temp file is automatically
+     * deleted when the caller calls fclose(). */
+    HANDLE h = CreateFile(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+            FILE_FLAG_DELETE_ON_CLOSE, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+        return NULL;
+    int fd = _open_osfhandle((intptr_t)h, _O_RDONLY);
+    if (fd == -1)
+        return NULL;
+    return _fdopen(fd, mode);
+#else
     return fopen(filename, mode);
+#endif
 }
 
 #else
