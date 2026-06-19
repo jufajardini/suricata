@@ -38,7 +38,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = ["sphinx_rtd_dark_mode"]
 
 # Allow users to switch to dark mode
 default_dark_mode = False
