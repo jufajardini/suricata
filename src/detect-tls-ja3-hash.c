@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-tls-ja3-hash.h"
@@ -110,6 +111,7 @@ void DetectTlsJa3HashRegister(void)
     DetectBufferTypeRegisterValidateCallback("ja3.hash", DetectMd5ValidateCallback);
 
     g_tls_ja3_hash_buffer_id = DetectBufferTypeGetByName("ja3.hash");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_JA3_HASH, g_tls_ja3_hash_buffer_id);
 #endif /* HAVE_JA3 */
 }
 

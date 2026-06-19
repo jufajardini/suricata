@@ -33,6 +33,7 @@
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-state.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 #include "flow-var.h"
@@ -93,6 +94,7 @@ void DetectSslStateRegister(void)
             "tls_generic", ALPROTO_TLS, SIG_FLAG_TOSERVER, 0, DetectEngineInspectGenericList, NULL);
     DetectAppLayerInspectEngineRegister(
             "tls_generic", ALPROTO_TLS, SIG_FLAG_TOCLIENT, 0, DetectEngineInspectGenericList, NULL);
+    DetectKeywordAppLayerMapRegister(DETECT_SSL_STATE, g_tls_generic_list_id);
 }
 
 /**

@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-ja4-hash.h"
 
 #include "app-layer-ssl.h"
@@ -97,6 +98,7 @@ void DetectJa4HashRegister(void)
     DetectBufferTypeSetDescriptionByName("ja4.hash", "TLS JA4 hash");
 
     g_ja4_hash_buffer_id = DetectBufferTypeGetByName("ja4.hash");
+    DetectKeywordAppLayerMapRegister(DETECT_JA4_HASH, g_ja4_hash_buffer_id);
 #endif /* HAVE_JA4 */
 }
 

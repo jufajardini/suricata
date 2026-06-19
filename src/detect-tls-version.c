@@ -33,6 +33,7 @@
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-state.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 #include "flow-var.h"
@@ -86,6 +87,7 @@ void DetectTlsVersionRegister (void)
     DetectSetupParseRegexes(PARSE_REGEX, &parse_regex);
 
     g_tls_generic_list_id = DetectBufferTypeRegister("tls_generic");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_VERSION, g_tls_generic_list_id);
 }
 
 /**

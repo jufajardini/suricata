@@ -32,6 +32,7 @@
 #include "detect-engine.h"
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -84,6 +85,7 @@ void DetectTlsSniRegister(void)
             "TLS Server Name Indication (SNI) extension");
 
     g_tls_sni_buffer_id = DetectBufferTypeGetByName("tls.sni");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_SNI, g_tls_sni_buffer_id);
 }
 
 

@@ -34,6 +34,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-tls-certs.h"
@@ -124,6 +125,7 @@ void DetectTlsCertsRegister(void)
     DetectBufferTypeSupportsMultiInstance("tls.certs");
 
     g_tls_certs_buffer_id = DetectBufferTypeGetByName("tls.certs");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_CERTS, g_tls_certs_buffer_id);
 }
 
 /**
@@ -246,6 +248,7 @@ void DetectTlsCertChainLenRegister(void)
     sigmatch_table[KEYWORD_ID].flags = SIGMATCH_SUPPORT_FIREWALL | SIGMATCH_INFO_UINT32;
 
     g_tls_cert_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(KEYWORD_ID, g_tls_cert_buffer_id);
 }
 
 #ifdef UNITTESTS

@@ -34,6 +34,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-tls-alpn.h"
 #include "detect-engine-uint.h"
@@ -102,6 +103,7 @@ void DetectTlsAlpnRegister(void)
     DetectBufferTypeSupportsMultiInstance("tls.alpn");
 
     g_tls_alpn_buffer_id = DetectBufferTypeGetByName("tls.alpn");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_ALPN, g_tls_alpn_buffer_id);
 }
 
 /**

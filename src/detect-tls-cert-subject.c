@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-tls-cert-subject.h"
@@ -96,6 +97,7 @@ void DetectTlsSubjectRegister(void)
             "TLS certificate subject");
 
     g_tls_cert_subject_buffer_id = DetectBufferTypeGetByName("tls.cert_subject");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_CERT_SUBJECT, g_tls_cert_subject_buffer_id);
 }
 
 /**

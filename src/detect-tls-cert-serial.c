@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -106,6 +107,7 @@ void DetectTlsSerialRegister(void)
             DetectTlsSerialValidateCallback);
 
     g_tls_cert_serial_buffer_id = DetectBufferTypeGetByName("tls.cert_serial");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_CERT_SERIAL, g_tls_cert_serial_buffer_id);
 }
 
 /**

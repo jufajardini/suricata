@@ -31,6 +31,7 @@
 #include "detect-parse.h"
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-tls-cert-validity.h"
@@ -125,6 +126,10 @@ void DetectTlsValidityRegister (void)
     DetectSetupParseRegexes(PARSE_REGEX, &parse_regex);
 
     g_tls_validity_buffer_id = DetectBufferTypeGetByName("tls:server_cert_done:generic");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_NOTBEFORE, g_tls_validity_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_NOTAFTER, g_tls_validity_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_EXPIRED, g_tls_validity_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_VALID, g_tls_validity_buffer_id);
 }
 
 /**

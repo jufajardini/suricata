@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -96,6 +97,7 @@ void DetectTlsIssuerRegister(void)
             "TLS certificate issuer");
 
     g_tls_cert_issuer_buffer_id = DetectBufferTypeGetByName("tls.cert_issuer");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_CERT_ISSUER, g_tls_cert_issuer_buffer_id);
 }
 
 

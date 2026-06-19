@@ -33,6 +33,7 @@
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-state.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 #include "flow-var.h"
@@ -76,6 +77,7 @@ void DetectSslVersionRegister(void)
 #endif
 
     g_tls_generic_list_id = DetectBufferTypeRegister("tls_generic");
+    DetectKeywordAppLayerMapRegister(DETECT_SSL_VERSION, g_tls_generic_list_id);
 }
 
 /**

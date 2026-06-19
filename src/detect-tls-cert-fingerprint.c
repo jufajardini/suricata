@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-tls-cert-fingerprint.h"
@@ -103,6 +104,7 @@ void DetectTlsFingerprintRegister(void)
             DetectTlsFingerprintValidateCallback);
 
     g_tls_cert_fingerprint_buffer_id = DetectBufferTypeGetByName("tls.cert_fingerprint");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_CERT_FINGERPRINT, g_tls_cert_fingerprint_buffer_id);
 }
 
 /**

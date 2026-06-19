@@ -34,6 +34,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-tls-subjectaltname.h"
 #include "detect-engine-uint.h"
@@ -99,6 +100,7 @@ void DetectTlsSubjectAltNameRegister(void)
     DetectBufferTypeSupportsMultiInstance("tls.subjectaltname");
 
     g_tls_subjectaltname_buffer_id = DetectBufferTypeGetByName("tls.subjectaltname");
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_SUBJECTALTNAME, g_tls_subjectaltname_buffer_id);
 }
 
 /**

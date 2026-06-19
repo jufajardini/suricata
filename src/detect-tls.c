@@ -45,6 +45,7 @@
 #include "detect-engine.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-state.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 #include "flow-var.h"
@@ -148,6 +149,11 @@ void DetectTlsRegister (void)
 
     DetectAppLayerInspectEngineRegister("tls_cert", ALPROTO_TLS, SIG_FLAG_TOSERVER,
             TLS_STATE_CLIENT_CERT_DONE, DetectEngineInspectGenericList, NULL);
+
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_SUBJECT, g_tls_cert_list_id);
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_ISSUERDN, g_tls_cert_list_id);
+    DetectKeywordAppLayerMapRegister(DETECT_TLS_FINGERPRINT, g_tls_cert_fingerprint_list_id);
+    DetectKeywordAppLayerProtoRegister(DETECT_TLS_STORE, ALPROTO_TLS);
 }
 
 /**
