@@ -28,6 +28,7 @@
 #include "suricata.h"
 
 const char *DetectTableToString(enum DetectTable table);
+DetectEngineAppInspectionEngine *DetectGetAppInspectionEngine(void);
 
 /* start up registry funcs */
 

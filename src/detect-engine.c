@@ -107,7 +107,7 @@ static uint32_t DetectEngineTenantGetIdFromVlanId(const void *ctx, const Packet 
 static uint32_t DetectEngineTenantGetIdFromPcap(const void *ctx, const Packet *p);
 
 static bool DetectEngineMultiTenantEnabledWithLock(void);
-static DetectEngineAppInspectionEngine *g_app_inspect_engines = NULL;
+DetectEngineAppInspectionEngine *g_app_inspect_engines = NULL;
 static DetectEnginePktInspectionEngine *g_pkt_inspect_engines = NULL;
 static DetectEngineFrameInspectionEngine *g_frame_inspect_engines = NULL;
 
@@ -127,6 +127,11 @@ const struct SignatureProperties signature_properties[SIG_TYPE_MAX] = {
 };
 // rule types documentation tag end: SignatureProperties
 // clang-format on
+
+DetectEngineAppInspectionEngine *DetectGetAppInspectionEngine(void)
+{
+    return g_app_inspect_engines;
+}
 
 const char *DetectTableToString(enum DetectTable table)
 {

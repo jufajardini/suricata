@@ -25,6 +25,7 @@
 #include "app-layer.h"
 #include "app-layer-parser.h"
 #include "detect-engine.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-parse.h"
 #include "util-unittest.h"
 #include "util-debug.h"
@@ -39,8 +40,29 @@ int ListKeywords(const char *keyword_info)
     SpmTableSetup();
     AppLayerSetup();
     SigTableInit();
+    DetectKeywordAppLayerListingEnable(); /* record keyword->app-layer map for the listing */
     SigTableSetup(); /* load the rule keywords */
-    return SigTableList(keyword_info);
+    int rc = SigTableList(keyword_info);
+    DetectKeywordAppLayerMapFree();
+    return rc;
+}
+
+int ListAppLayerKeywords(const char *proto_name)
+{
+    EngineModeSetIDS();
+    SCLogLoadConfig(0, 0, 0, 0);
+    MpmTableSetup();
+    SpmTableSetup();
+    AppLayerSetup();
+    SigTableInit();
+    DetectKeywordAppLayerListingEnable(); /* record keyword->app-layer map for the listing */
+    SigTableSetup();                      /* load the rule keywords */
+    int ret_code = DetectKeywordListByAppProto(proto_name) ? TM_ECODE_DONE : TM_ECODE_FAILED;
+    if (ret_code == TM_ECODE_FAILED) {
+        SCLogError("unknown app-layer protocol \"%s\"", proto_name);
+    }
+    DetectKeywordAppLayerMapFree();
+    return ret_code;
 }
 
 int ListAppLayerProtocols(const char *conf_filename)

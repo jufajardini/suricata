@@ -140,6 +140,7 @@ noinst_HEADERS = \
 	detect-engine-helper.h \
 	detect-engine-inspect-buffer.h \
 	detect-engine-iponly.h \
+	detect-engine-keyword-map.h \
 	detect-engine-loader.h \
 	detect-engine-mpm.h \
 	detect-engine-payload.h \
@@ -718,6 +719,7 @@ libsuricata_c_a_SOURCES = \
 	detect-engine-helper.c \
 	detect-engine-inspect-buffer.c \
 	detect-engine-iponly.c \
+	detect-engine-keyword-map.c \
 	detect-engine-loader.c \
 	detect-engine-mpm.c \
 	detect-engine-payload.c \

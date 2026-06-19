@@ -41,6 +41,7 @@
 #include "detect-engine-iponly.h"
 #include "detect-engine-threshold.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 
 #include "rust.h"
 
@@ -375,6 +376,8 @@ static void SigMultilinePrint(size_t i, const char *prefix)
         printf("\n%sReplaced by: %s", prefix, sigmatch_table[sigmatch_table[i].alternative].name);
     }
     printf("\n");
+    if (!DetectKeywordAppLayerPrintHooksList((uint16_t)i, prefix))
+        DetectKeywordAppLayerProtoList((uint16_t)i, prefix);
 }
 
 /** \brief Check if a keyword exists. */
@@ -446,8 +449,11 @@ int SigTableList(const char *keyword)
         }
     } else {
         for (i = 0; i < size; i++) {
-            if ((sigmatch_table[i].name != NULL) &&
-                strcmp(sigmatch_table[i].name, keyword) == 0) {
+            if (sigmatch_table[i].name == NULL)
+                continue;
+            if (strcmp(sigmatch_table[i].name, keyword) == 0 ||
+                    (sigmatch_table[i].alias != NULL &&
+                            strcmp(sigmatch_table[i].alias, keyword) == 0)) {
                 printf("= %s =\n", sigmatch_table[i].name);
                 SigMultilinePrint(i, "");
                 return TM_ECODE_DONE;
