@@ -46,6 +46,7 @@
 #include "detect.h"
 #include "detect-parse.h"
 #include "detect-engine.h"
+#include "detect-engine-keyword-map.h"
 
 #include "detect-modbus.h"
 
@@ -131,4 +132,5 @@ void DetectModbusRegister(void)
             "modbus", ALPROTO_MODBUS, SIG_FLAG_TOSERVER, 0, DetectEngineInspectGenericList, NULL);
 
     g_modbus_buffer_id = DetectBufferTypeGetByName("modbus");
+    DetectKeywordAppLayerMapRegister(DETECT_MODBUS, g_modbus_buffer_id);
 }

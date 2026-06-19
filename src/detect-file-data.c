@@ -35,6 +35,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-engine-file.h"
 #include "detect-file-data.h"
 
@@ -167,6 +168,7 @@ void DetectFiledataRegister(void)
     DetectBufferTypeSupportsMultiInstance("file_data");
 
     g_file_data_buffer_id = DetectBufferTypeGetByName("file_data");
+    DetectKeywordAppLayerMapRegister(DETECT_FILE_DATA, g_file_data_buffer_id);
 }
 
 static void SetupDetectEngineConfig(DetectEngineCtx *de_ctx) {

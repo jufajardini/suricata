@@ -23,6 +23,7 @@
 #include "detect-email.h"
 #include "rust.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 
 static int g_mime_email_from_buffer_id = 0;
 static int g_mime_email_subject_buffer_id = 0;
@@ -259,81 +260,90 @@ void DetectEmailRegister(void)
     kw.url = "/rules/email-keywords.html#email-from";
     kw.Setup = DetectMimeEmailFromSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    uint16_t kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_from_buffer_id = SCDetectHelperBufferMpmRegister(
             "email.from", "MIME EMAIL FROM", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailFromData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_from_buffer_id);
 
     kw.name = "email.subject";
     kw.desc = "'Subject' field from an email";
     kw.url = "/rules/email-keywords.html#email-subject";
     kw.Setup = DetectMimeEmailSubjectSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_subject_buffer_id = SCDetectHelperBufferMpmRegister("email.subject",
             "MIME EMAIL SUBJECT", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailSubjectData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_subject_buffer_id);
 
     kw.name = "email.to";
     kw.desc = "'To' field from an email";
     kw.url = "/rules/email-keywords.html#email-to";
     kw.Setup = DetectMimeEmailToSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_to_buffer_id = SCDetectHelperBufferMpmRegister(
             "email.to", "MIME EMAIL TO", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailToData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_to_buffer_id);
 
     kw.name = "email.cc";
     kw.desc = "'Cc' field from an email";
     kw.url = "/rules/email-keywords.html#email-cc";
     kw.Setup = DetectMimeEmailCcSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_cc_buffer_id = SCDetectHelperBufferMpmRegister(
             "email.cc", "MIME EMAIL CC", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailCcData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_cc_buffer_id);
 
     kw.name = "email.date";
     kw.desc = "'Date' field from an email";
     kw.url = "/rules/email-keywords.html#email-date";
     kw.Setup = DetectMimeEmailDateSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_date_buffer_id = SCDetectHelperBufferMpmRegister(
             "email.date", "MIME EMAIL DATE", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailDateData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_date_buffer_id);
 
     kw.name = "email.message_id";
     kw.desc = "'Message-Id' field from an email";
     kw.url = "/rules/email-keywords.html#email-message-id";
     kw.Setup = DetectMimeEmailMessageIdSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_message_id_buffer_id = SCDetectHelperBufferMpmRegister("email.message_id",
             "MIME EMAIL Message-Id", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailMessageIdData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_message_id_buffer_id);
 
     kw.name = "email.x_mailer";
     kw.desc = "'X-Mailer' field from an email";
     kw.url = "/rules/email-keywords.html#email-x-mailer";
     kw.Setup = DetectMimeEmailXMailerSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_x_mailer_buffer_id = SCDetectHelperBufferMpmRegister("email.x_mailer",
             "MIME EMAIL X-Mailer", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailXMailerData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_x_mailer_buffer_id);
 
     kw.name = "email.url";
     kw.desc = "'Url' extracted from an email";
     kw.url = "/rules/email-keywords.html#email-url";
     kw.Setup = DetectMimeEmailUrlSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER | SIGMATCH_INFO_MULTI_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_url_buffer_id = SCDetectHelperMultiBufferMpmRegister(
             "email.url", "MIME EMAIL URL", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailUrlData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_url_buffer_id);
 
     kw.name = "email.received";
     kw.desc = "'Received' field from an email";
     kw.url = "/rules/email-keywords.html#email-received";
     kw.Setup = DetectMimeEmailReceivedSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER | SIGMATCH_INFO_MULTI_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_mime_email_received_buffer_id = SCDetectHelperMultiBufferMpmRegister("email.received",
             "MIME EMAIL RECEIVED", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailReceivedData);
+    DetectKeywordAppLayerMapRegister(kw_id, g_mime_email_received_buffer_id);
 
     if (!MimeBodyMd5IsDisabled()) {
         // do not register the keyword if explicitly disabled
@@ -348,5 +358,6 @@ void DetectEmailRegister(void)
         g_mime_email_body_md5_buffer_id = SCDetectHelperBufferMpmRegister("email.body_md5",
                 "MIME EMAIL BODY MD5", ALPROTO_SMTP, STREAM_TOSERVER, GetMimeEmailBodyMd5Data);
         DetectBufferTypeRegisterValidateCallback("email.body_md5", DetectMd5ValidateCallback);
+        DetectKeywordAppLayerMapRegister(DETECT_EMAIL_BODY_MD5, g_mime_email_body_md5_buffer_id);
     }
 }

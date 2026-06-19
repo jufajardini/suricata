@@ -134,29 +134,32 @@ void SCDetectSMTPRegister(void)
     kw.url = "/rules/smtp-keywords.html#smtp-helo";
     kw.Setup = DetectSmtpHeloSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    uint16_t kw_id = SCDetectHelperKeywordRegister(&kw);
     DetectAppLayerInspectEngineRegister("smtp.helo", ALPROTO_SMTP, SIG_FLAG_TOSERVER, 0,
             DetectEngineInspectBufferGeneric, GetSmtpHeloData);
     DetectAppLayerMpmRegister("smtp.helo", SIG_FLAG_TOSERVER, 2, PrefilterGenericMpmRegister,
             GetSmtpHeloData, ALPROTO_SMTP, 0);
     DetectBufferTypeSetDescriptionByName("smtp.helo", "SMTP helo");
     g_smtp_helo_buffer_id = DetectBufferTypeGetByName("smtp.helo");
+    SCDetectKeywordAppLayerMapRegister(kw_id, g_smtp_helo_buffer_id);
 
     kw.name = "smtp.mail_from";
     kw.desc = "SMTP mail from buffer";
     kw.url = "/rules/smtp-keywords.html#smtp-mail-from";
     kw.Setup = DetectSmtpMailFromSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_smtp_mail_from_buffer_id = SCDetectHelperBufferMpmRegister(
             "smtp.mail_from", "SMTP MAIL FROM", ALPROTO_SMTP, STREAM_TOSERVER, GetSmtpMailFromData);
+    SCDetectKeywordAppLayerMapRegister(kw_id, g_smtp_mail_from_buffer_id);
 
     kw.name = "smtp.rcpt_to";
     kw.desc = "SMTP rcpt to buffer";
     kw.url = "/rules/smtp-keywords.html#smtp-rcpt-to";
     kw.Setup = DetectSmtpRcptToSetup;
     kw.flags = SIGMATCH_NOOPT | SIGMATCH_INFO_STICKY_BUFFER | SIGMATCH_INFO_MULTI_BUFFER;
-    SCDetectHelperKeywordRegister(&kw);
+    kw_id = SCDetectHelperKeywordRegister(&kw);
     g_smtp_rcpt_to_buffer_id = SCDetectHelperMultiBufferMpmRegister(
             "smtp.rcpt_to", "SMTP RCPT TO", ALPROTO_SMTP, STREAM_TOSERVER, GetSmtpRcptToData);
+    SCDetectKeywordAppLayerMapRegister(kw_id, g_smtp_rcpt_to_buffer_id);
 }

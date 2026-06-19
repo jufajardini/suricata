@@ -33,6 +33,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -146,6 +147,7 @@ void DetectSipMethodRegister(void)
             DetectSipMethodValidateCallback);
 
     g_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_SIP_METHOD, g_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }

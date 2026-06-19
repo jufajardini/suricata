@@ -31,6 +31,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-content-inspection.h"
 #include "detect-engine-helper.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-dns-name.h"
 #include "rust.h"
 
@@ -170,7 +171,9 @@ static int Register(const char *keyword, const char *desc, const char *doc,
     DetectBufferTypeSetDescriptionByName(keyword, keyword);
     DetectBufferTypeSupportsMultiInstance(keyword);
 
-    return DetectBufferTypeGetByName(keyword);
+    int buffer_id = DetectBufferTypeGetByName(keyword);
+    SCDetectKeywordAppLayerMapRegister(keyword_id, buffer_id);
+    return buffer_id;
 }
 
 void DetectDnsNameRegister(void)

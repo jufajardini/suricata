@@ -27,6 +27,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-engine-uint.h"
 
 #include "app-layer-dnp3.h"
@@ -358,6 +359,7 @@ static void DetectDNP3DataRegister(void)
             GetDNP3Data, ALPROTO_DNP3, 0);
 
     g_dnp3_data_buffer_id = DetectBufferTypeGetByName("dnp3_data");
+    DetectKeywordAppLayerMapRegister(DETECT_DNP3DATA, g_dnp3_data_buffer_id);
     SCReturn;
 }
 

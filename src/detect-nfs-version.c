@@ -33,6 +33,7 @@
 #include "detect-pcre.h"
 #include "detect-nfs-version.h"
 #include "detect-engine-uint.h"
+#include "detect-engine-keyword-map.h"
 
 #include "app-layer-parser.h"
 
@@ -75,6 +76,7 @@ void DetectNfsVersionRegister (void)
     DetectAppLayerInspectEngineRegister(
             "nfs_request", ALPROTO_NFS, SIG_FLAG_TOSERVER, 0, DetectEngineInspectGenericList, NULL);
     g_nfs_request_buffer_id = DetectBufferTypeGetByName("nfs_request");
+    DetectKeywordAppLayerMapRegister(DETECT_NFS_VERSION, g_nfs_request_buffer_id);
 
     SCLogDebug("g_nfs_request_buffer_id %d", g_nfs_request_buffer_id);
 }

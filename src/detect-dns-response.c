@@ -28,6 +28,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-engine-helper.h"
 #include "detect-dns-response.h"
 #include "util-profiling.h"
@@ -404,6 +405,7 @@ void DetectDnsResponseRegister(void)
     DetectBufferTypeSupportsMultiInstance(keyword);
 
     detect_buffer_id = DetectBufferTypeGetByName(keyword);
+    DetectKeywordAppLayerMapRegister(DETECT_DNS_RESPONSE, detect_buffer_id);
 
     SCDetectMdnsResponseRrnameRegister();
     SCDetectLlmnrResponseRrnameRegister();

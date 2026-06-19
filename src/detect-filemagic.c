@@ -35,6 +35,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-engine-file.h"
 
 #include "flow.h"
@@ -129,6 +130,8 @@ void DetectFilemagicRegister(void)
 
     g_file_magic_buffer_id = DetectBufferTypeGetByName("file.magic");
     SCLogDebug("registering filemagic rule option");
+
+    DetectKeywordAppLayerMapRegister(DETECT_FILE_MAGIC, g_file_magic_buffer_id);
 }
 
 #define FILEMAGIC_MIN_SIZE  512
