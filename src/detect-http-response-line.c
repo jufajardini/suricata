@@ -42,6 +42,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -124,6 +125,7 @@ void DetectHttpResponseLineRegister(void)
             "http response line");
 
     g_http_response_line_id = DetectBufferTypeGetByName("http_response_line");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RESPONSE_LINE, g_http_response_line_id);
 }
 
 /**

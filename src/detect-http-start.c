@@ -41,6 +41,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-http-header-common.h"
@@ -202,6 +203,7 @@ void DetectHttpStartRegister(void)
             BUFFER_DESC);
 
     g_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_START, g_buffer_id);
 
     g_keyword_thread_id = DetectRegisterThreadCtxGlobalFuncs(KEYWORD_NAME,
             HttpHeaderThreadDataInit, &g_td_config, HttpHeaderThreadDataFree);

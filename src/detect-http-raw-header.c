@@ -40,6 +40,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 
 #include "flow.h"
@@ -132,6 +133,8 @@ void DetectHttpRawHeaderRegister(void)
             "http2.raw_header", SCHttp2ThreadBufDataInit, NULL, SCHttp2ThreadBufDataFree);
 
     g_http_raw_header_buffer_id = DetectBufferTypeGetByName("http_raw_header");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RAW_HEADER_CM, g_http_raw_header_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RAW_HEADER, g_http_raw_header_buffer_id);
 }
 
 /**

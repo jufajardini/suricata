@@ -40,6 +40,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -136,6 +137,8 @@ void DetectHttpCookieRegister(void)
             "http_cookie", SCHttp2ThreadBufDataInit, NULL, SCHttp2ThreadBufDataFree);
 
     g_http_cookie_buffer_id = DetectBufferTypeGetByName("http_cookie");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_COOKIE_CM, g_http_cookie_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_COOKIE, g_http_cookie_buffer_id);
 }
 
 /**

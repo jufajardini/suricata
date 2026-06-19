@@ -39,6 +39,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-urilen.h"
@@ -166,6 +167,11 @@ void DetectHttpUriRegister (void)
     DetectBufferTypeRegisterValidateCallback("http_raw_uri", DetectUrilenValidateContent);
 
     g_http_raw_uri_buffer_id = DetectBufferTypeGetByName("http_raw_uri");
+
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_URI_CM, g_http_uri_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_URI, g_http_uri_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RAW_URI, g_http_raw_uri_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_URI_RAW, g_http_raw_uri_buffer_id);
 }
 
 /**

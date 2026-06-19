@@ -42,6 +42,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 // PrefilterMpmFiledata
@@ -123,6 +124,8 @@ void DetectHttpClientBodyRegister(void)
             DetectHttpClientBodySetupCallback);
 
     g_http_client_body_buffer_id = DetectBufferTypeGetByName("http_client_body");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_CLIENT_BODY, g_http_client_body_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_REQUEST_BODY, g_http_client_body_buffer_id);
 }
 
 static void DetectHttpClientBodySetupCallback(

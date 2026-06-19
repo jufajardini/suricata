@@ -42,6 +42,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -125,6 +126,7 @@ void DetectHttpRequestLineRegister(void)
             "http request line");
 
     g_http_request_line_buffer_id = DetectBufferTypeGetByName("http_request_line");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_REQUEST_LINE, g_http_request_line_buffer_id);
 }
 
 /**

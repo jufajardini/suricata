@@ -40,6 +40,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -167,6 +168,10 @@ void DetectHttpHHRegister(void)
             "http_raw_host", SCHttp2ThreadBufDataInit, NULL, SCHttp2ThreadBufDataFree);
 
     g_http_raw_host_buffer_id = DetectBufferTypeGetByName("http_raw_host");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_HOST_CM, g_http_host_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_HOST, g_http_host_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RAW_HOST, g_http_raw_host_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_HOST_RAW, g_http_raw_host_buffer_id);
 }
 
 /**

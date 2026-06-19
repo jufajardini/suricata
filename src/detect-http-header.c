@@ -42,6 +42,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -412,6 +413,8 @@ void DetectHttpHeaderRegister(void)
             "http headers");
 
     g_http_header_buffer_id = DetectBufferTypeGetByName("http_header");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_HEADER_CM, g_http_header_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_HEADER, g_http_header_buffer_id);
 
     g_keyword_thread_id = DetectRegisterThreadCtxGlobalFuncs("http_header",
             HttpHeaderThreadDataInit, &g_td_config, HttpHeaderThreadDataFree);
@@ -581,6 +584,7 @@ void DetectHttpRequestHeaderRegister(void)
 
     DetectBufferTypeSetDescriptionByName("http_request_header", "HTTP header name and value");
     g_http_request_header_buffer_id = DetectBufferTypeGetByName("http_request_header");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_REQUEST_HEADER, g_http_request_header_buffer_id);
     DetectBufferTypeSupportsMultiInstance("http_request_header");
     g_request_header_thread_id = DetectRegisterThreadCtxGlobalFuncs("http_request_header",
             HttpMultiBufHeaderThreadDataInit, NULL, HttpMultiBufHeaderThreadDataFree);
@@ -617,6 +621,7 @@ void DetectHttpResponseHeaderRegister(void)
 
     DetectBufferTypeSetDescriptionByName("http_response_header", "HTTP header name and value");
     g_http_response_header_buffer_id = DetectBufferTypeGetByName("http_response_header");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_RESPONSE_HEADER, g_http_response_header_buffer_id);
     DetectBufferTypeSupportsMultiInstance("http_response_header");
     g_response_header_thread_id = DetectRegisterThreadCtxGlobalFuncs("http_response_header",
             HttpMultiBufHeaderThreadDataInit, NULL, HttpMultiBufHeaderThreadDataFree);

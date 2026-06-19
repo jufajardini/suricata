@@ -40,6 +40,7 @@
 #include "detect-engine-buffer.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -119,6 +120,8 @@ void DetectHttpMethodRegister(void)
             DetectHttpMethodValidateCallback);
 
     g_http_method_buffer_id = DetectBufferTypeGetByName("http_method");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_METHOD_CM, g_http_method_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_METHOD, g_http_method_buffer_id);
 
     SCLogDebug("registering http_method rule option");
 }

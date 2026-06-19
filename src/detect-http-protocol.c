@@ -42,6 +42,7 @@
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 #include "detect-http-header-common.h"
@@ -186,4 +187,5 @@ void DetectHttpProtocolRegister(void)
     DetectBufferTypeRegisterValidateCallback(BUFFER_NAME, DetectHttpProtocolValidateCallback);
 
     g_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_PROTOCOL, g_buffer_id);
 }

@@ -37,6 +37,7 @@
 #include "detect-engine-build.h"
 #include "detect-content.h"
 #include "detect-engine-uint.h"
+#include "detect-engine-keyword-map.h"
 
 #include "detect-urilen.h"
 #include "util-debug.h"
@@ -73,6 +74,8 @@ void DetectUrilenRegister(void)
 
     g_http_uri_buffer_id = DetectBufferTypeRegister("http_uri");
     g_http_raw_uri_buffer_id = DetectBufferTypeRegister("http_raw_uri");
+    DetectKeywordAppLayerMapRegister(DETECT_URILEN, g_http_uri_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_URILEN, g_http_raw_uri_buffer_id);
 }
 
 /**

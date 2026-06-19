@@ -43,6 +43,7 @@
 #include "detect-pcre.h"
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 #include "flow-var.h"
@@ -117,6 +118,8 @@ void DetectHttpStatCodeRegister (void)
             "http response status code");
 
     g_http_stat_code_buffer_id = DetectBufferTypeGetByName("http_stat_code");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_STAT_CODE_CM, g_http_stat_code_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_STAT_CODE, g_http_stat_code_buffer_id);
 }
 
 /**

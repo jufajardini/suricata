@@ -41,6 +41,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-state.h"
 #include "detect-engine-prefilter.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 #include "detect-pcre.h"
 
@@ -120,6 +121,8 @@ void DetectHttpUARegister(void)
             "http_user_agent", SCHttp2ThreadBufDataInit, NULL, SCHttp2ThreadBufDataFree);
 
     g_http_ua_buffer_id = DetectBufferTypeGetByName("http_user_agent");
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_USER_AGENT, g_http_ua_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_HTTP_UA, g_http_ua_buffer_id);
 }
 
 /**
