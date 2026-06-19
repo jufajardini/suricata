@@ -29,7 +29,7 @@ use crate::websocket::parser::WebSocketOpcode;
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperBufferProgressRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
     SCSigTableAppLiteElmt, SigMatchCtx, Signature,
 };
 
@@ -241,6 +241,7 @@ pub unsafe extern "C" fn SCDetectWebsocketRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_WEBSOCKET_OPCODE_KW_ID, G_WEBSOCKET_OPCODE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"websocket.mask\0".as_ptr() as *const libc::c_char,
         desc: b"match WebSocket mask\0".as_ptr() as *const libc::c_char,
@@ -257,6 +258,7 @@ pub unsafe extern "C" fn SCDetectWebsocketRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_WEBSOCKET_MASK_KW_ID, G_WEBSOCKET_MASK_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"websocket.flags\0".as_ptr() as *const libc::c_char,
         desc: b"match WebSocket flags\0".as_ptr() as *const libc::c_char,
@@ -273,13 +275,14 @@ pub unsafe extern "C" fn SCDetectWebsocketRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_WEBSOCKET_FLAGS_KW_ID, G_WEBSOCKET_FLAGS_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("websocket.payload"),
         desc: String::from("match WebSocket payload"),
         url: String::from("/rules/websocket-keywords.html#websocket-payload"),
         setup: websocket_detect_payload_setup,
     };
-    let _g_ws_payload_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_ws_payload_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_WEBSOCKET_PAYLOAD_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"websocket.payload\0".as_ptr() as *const libc::c_char,
         b"WebSocket payload\0".as_ptr() as *const libc::c_char,
@@ -287,4 +290,5 @@ pub unsafe extern "C" fn SCDetectWebsocketRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(websocket_detect_payload_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_ws_payload_kw_id, G_WEBSOCKET_PAYLOAD_BUFFER_ID);
 }

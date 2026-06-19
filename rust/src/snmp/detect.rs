@@ -32,8 +32,9 @@ use std::os::raw::{c_int, c_void};
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferProgressMpmRegister, SCDetectHelperBufferProgressRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
-    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister,
+    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
+    Signature,
 };
 
 static mut G_SNMP_VERSION_KW_ID: u16 = 0;
@@ -276,6 +277,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         flags: SIGMATCH_INFO_UINT32 | SIGMATCH_SUPPORT_FIREWALL,
     };
     G_SNMP_VERSION_KW_ID = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerMapRegister(G_SNMP_VERSION_KW_ID, G_SNMP_GENERIC_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"snmp.pdu_type\0".as_ptr() as *const libc::c_char,
@@ -287,6 +289,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         flags: SIGMATCH_INFO_UINT32 | SIGMATCH_INFO_ENUM_UINT | SIGMATCH_SUPPORT_FIREWALL,
     };
     G_SNMP_PDUTYPE_KW_ID = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerMapRegister(G_SNMP_PDUTYPE_KW_ID, G_SNMP_GENERIC_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("snmp.usm"),
@@ -294,7 +297,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         url: String::from("/rules/snmp-keywords.html#snmp-usm"),
         setup: snmp_detect_usm_setup,
     };
-    let _g_snmp_usm_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_snmp_usm_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SNMP_USM_BUFFER_ID = SCDetectHelperBufferProgressMpmRegister(
         b"snmp.usm\0".as_ptr() as *const libc::c_char,
         b"SNMP USM\0".as_ptr() as *const libc::c_char,
@@ -303,6 +306,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         Some(snmp_detect_usm_get_data),
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(g_snmp_usm_kw_id, G_SNMP_USM_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("snmp.community"),
@@ -310,7 +314,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         url: String::from("/rules/snmp-keywords.html#snmp-community"),
         setup: snmp_detect_community_setup,
     };
-    let _g_snmp_community_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_snmp_community_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SNMP_COMMUNITY_BUFFER_ID = SCDetectHelperBufferProgressMpmRegister(
         b"snmp.community\0".as_ptr() as *const libc::c_char,
         b"SNMP Community identifier\0".as_ptr() as *const libc::c_char,
@@ -319,6 +323,7 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         Some(snmp_detect_community_get_data),
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(g_snmp_community_kw_id, G_SNMP_COMMUNITY_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"snmp.trap_type\0".as_ptr() as *const libc::c_char,
@@ -330,4 +335,5 @@ pub(super) unsafe extern "C" fn detect_snmp_register() {
         flags: SIGMATCH_INFO_UINT8 | SIGMATCH_INFO_ENUM_UINT | SIGMATCH_SUPPORT_FIREWALL,
     };
     G_SNMP_TRAPTYPE_KW_ID = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerMapRegister(G_SNMP_TRAPTYPE_KW_ID, G_SNMP_GENERIC_BUFFER_ID);
 }

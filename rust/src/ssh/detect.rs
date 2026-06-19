@@ -26,8 +26,8 @@ use std::ptr;
 use suricata_sys::sys::{
     DetectEngineCtx, SCDetectBufferSetActiveList, SCDetectHelperBufferProgressMpmRegister,
     SCDetectHelperKeywordAliasRegister, SCDetectHelperKeywordRegister,
-    SCDetectRegisterBufferLowerMd5Callbacks, SCDetectSignatureSetAppProto,
-    SCSigMatchSilentErrorEnabled, SCSigTableAppLiteElmt, Signature,
+    SCDetectKeywordAppLayerProtoRegister, SCDetectKeywordAppLayerMapRegister, SCDetectRegisterBufferLowerMd5Callbacks,
+    SCDetectSignatureSetAppProto, SCSigMatchSilentErrorEnabled, SCSigTableAppLiteElmt, Signature,
 };
 
 #[no_mangle]
@@ -304,6 +304,7 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         ssh_software_kw_id,
         b"ssh_software\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(ssh_software_kw_id, G_SSH_SOFTWARE_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"ssh.softwareversion\0".as_ptr() as *const libc::c_char,
@@ -314,7 +315,8 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         Free: None,
         flags: 0,
     };
-    _ = SCDetectHelperKeywordRegister(&kw);
+    let kw_id = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerProtoRegister(kw_id, ALPROTO_SSH);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"ssh.protoversion\0".as_ptr() as *const libc::c_char,
@@ -325,7 +327,8 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         Free: None,
         flags: 0,
     };
-    _ = SCDetectHelperKeywordRegister(&kw);
+    let kw_id = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerProtoRegister(kw_id, ALPROTO_SSH);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("ssh.proto"),
@@ -346,6 +349,7 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         ssh_proto_kw_id,
         b"ssh_proto\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(ssh_proto_kw_id, G_SSH_PROTO_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("ssh.hassh.string"),
@@ -366,6 +370,7 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         DETECT_SSH_HASSH_STRING,
         b"ssh-hassh-string\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(DETECT_SSH_HASSH_STRING, G_SSH_HASSH_STR_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("ssh.hassh.server.string"),
@@ -386,6 +391,7 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         DETECT_SSH_HASSH_SERVER_STRING,
         b"ssh-hassh-server-string\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(DETECT_SSH_HASSH_SERVER_STRING, G_SSH_HASSH_SRV_STR_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("ssh.hassh"),
@@ -407,6 +413,7 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         b"ssh-hassh\0".as_ptr() as *const libc::c_char,
     );
     SCDetectRegisterBufferLowerMd5Callbacks(b"ssh.hassh\0".as_ptr() as *const libc::c_char);
+    SCDetectKeywordAppLayerMapRegister(DETECT_SSH_HASSH, G_SSH_HASSH_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("ssh.hassh.server"),
@@ -428,4 +435,5 @@ pub unsafe extern "C" fn SCDetectSshRegister() {
         b"ssh-hassh-server\0".as_ptr() as *const libc::c_char,
     );
     SCDetectRegisterBufferLowerMd5Callbacks(b"ssh.hassh.server\0".as_ptr() as *const libc::c_char);
+    SCDetectKeywordAppLayerMapRegister(DETECT_SSH_HASSH_SERVER, G_SSH_HASSH_SRV_BUFFER_ID);
 }

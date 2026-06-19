@@ -30,9 +30,10 @@ use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, DetectEngineTransforms, Flow, InspectionBuffer,
     SCDetectBufferSetActiveList, SCDetectHelperBufferMpmRegister,
     SCDetectHelperBufferProgressRegister, SCDetectHelperKeywordAliasRegister,
-    SCDetectHelperKeywordRegister, SCDetectRegisterMpmGeneric, SCDetectSignatureSetAppProto,
-    SCFlowGetAppProtocol, SCInspectionBufferGet, SCInspectionBufferSetupAndApplyTransforms,
-    SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister, SCDetectRegisterMpmGeneric,
+    SCDetectSignatureSetAppProto, SCFlowGetAppProtocol, SCInspectionBufferGet,
+    SCInspectionBufferSetupAndApplyTransforms, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt,
+    SigMatchCtx, Signature,
 };
 use uuid::Uuid;
 
@@ -463,7 +464,7 @@ pub unsafe extern "C" fn SCDetectDcerpcRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
-    _ = SCDetectHelperBufferProgressRegister(
+    let buffer_id = SCDetectHelperBufferProgressRegister(
         b"dce_generic\0".as_ptr() as *const libc::c_char,
         ALPROTO_SMB,
         STREAM_TOSERVER | STREAM_TOCLIENT,
@@ -473,6 +474,7 @@ pub unsafe extern "C" fn SCDetectDcerpcRegister() {
         G_DCERPC_OPNUM_KW_ID,
         b"dce_opnum\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DCERPC_OPNUM_KW_ID, buffer_id);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"dcerpc.iface\0".as_ptr() as *const libc::c_char,
@@ -489,6 +491,7 @@ pub unsafe extern "C" fn SCDetectDcerpcRegister() {
         G_DCERPC_IFACE_KW_ID,
         b"dce_iface\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DCERPC_IFACE_KW_ID, buffer_id);
 
     let kw_stub = SigTableElmtStickyBuffer {
         name: String::from("dcerpc.stub_data"),
@@ -516,6 +519,7 @@ pub unsafe extern "C" fn SCDetectDcerpcRegister() {
         stub_kw_id,
         b"dce_stub_data\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(stub_kw_id, G_DCERPC_STUB_BUFFER_ID);
 }
 
 #[cfg(test)]

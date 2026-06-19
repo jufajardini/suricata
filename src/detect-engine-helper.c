@@ -29,6 +29,7 @@
 #include "detect-engine-prefilter.h"
 #include "detect-parse.h"
 #include "detect-engine-content-inspection.h"
+#include "detect-engine-keyword-map.h"
 #include "rust.h"
 
 int SCDetectHelperBufferProgressRegister(
@@ -164,6 +165,18 @@ uint16_t SCDetectHelperKeywordRegister(const SCSigTableAppLiteElmt *kw)
 void SCDetectHelperKeywordAliasRegister(uint16_t kwid, const char *alias)
 {
     sigmatch_table[kwid].alias = alias;
+}
+
+void SCDetectKeywordAppLayerMapRegister(uint16_t keyword_id, int buffer_id)
+{
+    DetectKeywordAppLayerMapRegister(keyword_id, buffer_id);
+}
+
+/** \brief Rust-facing wrapper to associate a keyword with an app-layer
+ *         protocol directly (tier-3 keywords without an inspection buffer). */
+void SCDetectKeywordAppLayerProtoRegister(uint16_t keyword_id, AppProto alproto)
+{
+    DetectKeywordAppLayerProtoRegister(keyword_id, alproto);
 }
 
 int SCDetectHelperTransformRegister(const SCTransformTableElmt *kw)

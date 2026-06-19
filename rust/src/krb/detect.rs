@@ -23,8 +23,8 @@ use suricata_sys::sys::{
     AppProto, DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferProgressRegister, SCDetectHelperKeywordAliasRegister,
     SCDetectHelperKeywordRegister, SCDetectHelperMultiBufferProgressMpmRegister,
-    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
-    Signature,
+    SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
+    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
 };
 
 use crate::core::{STREAM_TOCLIENT, STREAM_TOSERVER};
@@ -546,6 +546,7 @@ pub unsafe extern "C" fn SCDetectKrb5Register() {
         STREAM_TOCLIENT | STREAM_TOSERVER,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_KRB5_MSG_TYPE_KW_ID, G_KRB5_GENERIC_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"krb5_err_code\0".as_ptr() as *const libc::c_char,
@@ -557,6 +558,7 @@ pub unsafe extern "C" fn SCDetectKrb5Register() {
         flags: SIGMATCH_INFO_UINT32,
     };
     G_KRB5_ERR_CODE_KW_ID = SCDetectHelperKeywordRegister(&kw);
+    SCDetectKeywordAppLayerMapRegister(G_KRB5_ERR_CODE_KW_ID, G_KRB5_GENERIC_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("krb5.sname"),
@@ -577,6 +579,7 @@ pub unsafe extern "C" fn SCDetectKrb5Register() {
         krb5_sname_hdr_kw_id,
         b"krb5_sname\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(krb5_sname_hdr_kw_id, G_KRB5_SNAME_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("krb5.cname"),
@@ -597,6 +600,7 @@ pub unsafe extern "C" fn SCDetectKrb5Register() {
         krb5_cname_hdr_kw_id,
         b"krb5_cname\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(krb5_cname_hdr_kw_id, G_KRB5_CNAME_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"krb5.ticket_encryption\0".as_ptr() as *const libc::c_char,
@@ -614,5 +618,9 @@ pub unsafe extern "C" fn SCDetectKrb5Register() {
         ALPROTO_KRB5 as AppProto,
         STREAM_TOCLIENT,
         1,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_KRB5_TICKET_ENCRYPTION_KW_ID,
+        G_KRB5_TICKET_ENCRYPTION_BUFFER_ID,
     );
 }

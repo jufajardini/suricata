@@ -33,8 +33,9 @@ use std::ptr;
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperBufferProgressRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
-    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister,
+    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
+    Signature,
 };
 
 unsafe extern "C" fn rfb_name_get(
@@ -191,7 +192,7 @@ pub unsafe extern "C" fn SCDetectRfbRegister() {
         url: String::from("/rules/rfb-keywords.html#rfb-name"),
         setup: rfb_name_setup,
     };
-    let _g_rfb_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_rfb_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_RFB_NAME_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"rfb.name\0".as_ptr() as *const libc::c_char,
         b"rfb name\0".as_ptr() as *const libc::c_char,
@@ -199,6 +200,7 @@ pub unsafe extern "C" fn SCDetectRfbRegister() {
         STREAM_TOCLIENT,
         Some(rfb_name_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_rfb_name_kw_id, G_RFB_NAME_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"rfb.sectype\0".as_ptr() as *const libc::c_char,
         desc: b"match RFB security type\0".as_ptr() as *const libc::c_char,
@@ -215,6 +217,7 @@ pub unsafe extern "C" fn SCDetectRfbRegister() {
         STREAM_TOSERVER,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_RFB_SEC_TYPE_KW_ID, G_RFB_SEC_TYPE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"rfb.secresult\0".as_ptr() as *const libc::c_char,
         desc: b"match RFB security result\0".as_ptr() as *const libc::c_char,
@@ -231,6 +234,7 @@ pub unsafe extern "C" fn SCDetectRfbRegister() {
         STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_RFB_SEC_RESULT_KW_ID, G_RFB_SEC_RESULT_BUFFER_ID);
 }
 
 #[cfg(test)]

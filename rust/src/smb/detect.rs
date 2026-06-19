@@ -30,8 +30,9 @@ use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectGetLastSMFromLists, SCDetectHelperBufferMpmRegister,
     SCDetectHelperBufferProgressRegister, SCDetectHelperKeywordAliasRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
-    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister,
+    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
+    Signature,
 };
 
 unsafe extern "C" fn smb_tx_get_share(
@@ -353,7 +354,7 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
         url: String::from("/rules/smb-keywords.html#smb-ntlmssp-user"),
         setup: smb_ntlmssp_user_setup,
     };
-    helper_keyword_register_sticky_buffer(&kw_user);
+    let mut kw_id = helper_keyword_register_sticky_buffer(&kw_user);
     G_SMB_NTLMSSP_USER_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"smb_ntlmssp_user\0".as_ptr() as *const libc::c_char,
         b"smb ntlmssp user\0".as_ptr() as *const libc::c_char,
@@ -361,14 +362,14 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
         STREAM_TOSERVER,
         Some(smb_tx_get_ntlmssp_user),
     );
-
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_SMB_NTLMSSP_USER_BUFFER_ID);
     let kw_domain = SigTableElmtStickyBuffer {
         name: String::from("smb.ntlmssp_domain"),
         desc: String::from("sticky buffer to match on SMB ntlmssp domain in session setup"),
         url: String::from("/rules/smb-keywords.html#smb-ntlmssp-domain"),
         setup: smb_ntlmssp_domain_setup,
     };
-    helper_keyword_register_sticky_buffer(&kw_domain);
+    kw_id = helper_keyword_register_sticky_buffer(&kw_domain);
     G_SMB_NTLMSSP_DOMAIN_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"smb_ntlmssp_domain\0".as_ptr() as *const libc::c_char,
         b"smb ntlmssp domain\0".as_ptr() as *const libc::c_char,
@@ -376,6 +377,7 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
         STREAM_TOSERVER,
         Some(smb_tx_get_ntlmssp_domain),
     );
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_SMB_NTLMSSP_DOMAIN_BUFFER_ID);
 
     let kw_share = SigTableElmtStickyBuffer {
         name: String::from("smb.share"),
@@ -395,6 +397,7 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
         share_keyword_id,
         b"smb_share\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(share_keyword_id, G_SMB_SHARE_BUFFER_ID);
 
     let kw_named_pipe = SigTableElmtStickyBuffer {
         name: String::from("smb.named_pipe"),
@@ -414,6 +417,7 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
         named_pipe_keyword_id,
         b"smb_named_pipe\0".as_ptr() as *const libc::c_char,
     );
+    SCDetectKeywordAppLayerMapRegister(named_pipe_keyword_id, G_SMB_NAMED_PIPE_BUFFER_ID);
 
     // Register smb.version keyword (match function)
     let version_kw = SCSigTableAppLiteElmt {
@@ -427,13 +431,13 @@ pub unsafe extern "C" fn SCDetectSmbRegister() {
     };
 
     G_SMB_VERSION_KW_ID = SCDetectHelperKeywordRegister(&version_kw);
-
     G_SMB_VERSION_BUFFER_ID = SCDetectHelperBufferProgressRegister(
         b"smb_version\0".as_ptr() as *const libc::c_char,
         ALPROTO_SMB,
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_SMB_VERSION_KW_ID, G_SMB_VERSION_BUFFER_ID);
 }
 
 #[cfg(test)]

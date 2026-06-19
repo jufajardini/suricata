@@ -44,8 +44,9 @@ use crate::detect::{
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperBufferProgressRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
-    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister,
+    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
+    Signature,
 };
 
 use crate::direction::Direction;
@@ -1397,6 +1398,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CIPSERVICE_KW_ID, G_ENIP_CIPSERVICE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.capabilities\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP capabilities\0".as_ptr() as *const libc::c_char,
@@ -1413,6 +1415,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CAPABILITIES_KW_ID, G_ENIP_CAPABILITIES_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.cip_attribute\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP cip_attribute\0".as_ptr() as *const libc::c_char,
@@ -1429,6 +1432,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CIP_ATTRIBUTE_KW_ID, G_ENIP_CIP_ATTRIBUTE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.cip_class\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP cip_class\0".as_ptr() as *const libc::c_char,
@@ -1445,6 +1449,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CIP_CLASS_KW_ID, G_ENIP_CIP_CLASS_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.vendor_id\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP vendor_id\0".as_ptr() as *const libc::c_char,
@@ -1470,6 +1475,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         Free: Some(status_free),
         flags: SIGMATCH_INFO_UINT32 | SIGMATCH_INFO_ENUM_UINT,
     };
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_VENDOR_ID_KW_ID, G_ENIP_VENDOR_ID_BUFFER_ID);
     G_ENIP_STATUS_KW_ID = SCDetectHelperKeywordRegister(&kw);
     G_ENIP_STATUS_BUFFER_ID = SCDetectHelperBufferProgressRegister(
         b"enip.status\0".as_ptr() as *const libc::c_char,
@@ -1493,6 +1499,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_STATE_KW_ID, G_ENIP_STATE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.serial\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP serial\0".as_ptr() as *const libc::c_char,
@@ -1509,6 +1516,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_SERIAL_KW_ID, G_ENIP_SERIAL_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.revision\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP revision\0".as_ptr() as *const libc::c_char,
@@ -1525,6 +1533,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_REVISION_KW_ID, G_ENIP_REVISION_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.protocol_version\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP protocol_version\0".as_ptr() as *const libc::c_char,
@@ -1540,6 +1549,10 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         ALPROTO_ENIP,
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_ENIP_PROTOCOL_VERSION_KW_ID,
+        G_ENIP_PROTOCOL_VERSION_BUFFER_ID,
     );
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.product_code\0".as_ptr() as *const libc::c_char,
@@ -1557,6 +1570,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_PRODUCT_CODE_KW_ID, G_ENIP_PRODUCT_CODE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip_command\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP command\0".as_ptr() as *const libc::c_char,
@@ -1573,6 +1587,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_COMMAND_KW_ID, G_ENIP_COMMAND_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.identity_status\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP identity_status\0".as_ptr() as *const libc::c_char,
@@ -1588,6 +1603,10 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         ALPROTO_ENIP,
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_ENIP_IDENTITY_STATUS_KW_ID,
+        G_ENIP_IDENTITY_STATUS_BUFFER_ID,
     );
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.device_type\0".as_ptr() as *const libc::c_char,
@@ -1605,6 +1624,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_DEVICE_TYPE_KW_ID, G_ENIP_DEVICE_TYPE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.cip_status\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP cip_status\0".as_ptr() as *const libc::c_char,
@@ -1621,6 +1641,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CIP_STATUS_KW_ID, G_ENIP_CIP_STATUS_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.cip_instance\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP cip_instance\0".as_ptr() as *const libc::c_char,
@@ -1637,6 +1658,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_ENIP_CIP_INSTANCE_KW_ID, G_ENIP_CIP_INSTANCE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"enip.cip_extendedstatus\0".as_ptr() as *const libc::c_char,
         desc: b"rules for detecting EtherNet/IP cip_extendedstatus\0".as_ptr()
@@ -1654,13 +1676,17 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(
+        G_ENIP_CIP_EXTENDEDSTATUS_KW_ID,
+        G_ENIP_CIP_EXTENDEDSTATUS_BUFFER_ID,
+    );
     let kw = SigTableElmtStickyBuffer {
         name: String::from("enip.product_name"),
         desc: String::from("sticky buffer to match EtherNet/IP product name"),
         url: String::from("/rules/enip-keyword.html#enip-product-name"),
         setup: product_name_setup,
     };
-    let _g_enip_product_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_enip_product_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_ENIP_PRODUCT_NAME_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"enip.product_name\0".as_ptr() as *const libc::c_char,
         b"ENIP product name\0".as_ptr() as *const libc::c_char,
@@ -1668,13 +1694,14 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(product_name_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_enip_product_name_kw_id, G_ENIP_PRODUCT_NAME_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("enip.service_name"),
         desc: String::from("sticky buffer to match EtherNet/IP service name"),
         url: String::from("/rules/enip-keyword.html#enip-service-name"),
         setup: service_name_setup,
     };
-    let _g_enip_service_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_enip_service_name_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_ENIP_SERVICE_NAME_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"enip.service_name\0".as_ptr() as *const libc::c_char,
         b"ENIP service name\0".as_ptr() as *const libc::c_char,
@@ -1682,6 +1709,7 @@ pub unsafe extern "C" fn SCDetectEnipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(service_name_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_enip_service_name_kw_id, G_ENIP_SERVICE_NAME_BUFFER_ID);
 }
 
 #[cfg(test)]

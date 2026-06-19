@@ -35,8 +35,8 @@ use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferProgressRegister, SCDetectHelperKeywordAliasRegister,
     SCDetectHelperKeywordRegister, SCDetectHelperMultiBufferProgressMpmRegister,
-    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
-    Signature, SIGMATCH_SUPPORT_FIREWALL,
+    SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
+    SCSigTableAppLiteElmt, SigMatchCtx, Signature, SIGMATCH_SUPPORT_FIREWALL,
 };
 
 /// Perform the DNS opcode match.
@@ -363,7 +363,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         url: String::from("/rules/dns-keywords.html#dns-answers-rrname"),
         setup: dns_detect_answer_name_setup,
     };
-    let _g_dns_answer_name_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_dns_answer_name_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_DNS_ANSWER_NAME_BUFFER_ID = SCDetectHelperMultiBufferProgressMpmRegister(
         b"dns.answer.name\0".as_ptr() as *const libc::c_char,
         b"dns answer name\0".as_ptr() as *const libc::c_char,
@@ -374,6 +374,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         Some(dns_tx_get_answer_name),
         1, // response complete
     );
+    SCDetectKeywordAppLayerMapRegister(g_dns_answer_name_kw_id, G_DNS_ANSWER_NAME_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"dns.opcode\0".as_ptr() as *const libc::c_char,
         desc: b"Match the DNS header opcode flag.\0".as_ptr() as *const libc::c_char,
@@ -390,13 +391,14 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DNS_OPCODE_KW_ID, G_DNS_OPCODE_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("dns.query.name"),
         desc: String::from("DNS query name sticky buffer"),
         url: String::from("/rules/dns-keywords.html#dns-queries-rrname"),
         setup: dns_detect_query_name_setup,
     };
-    let _g_dns_query_name_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_dns_query_name_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_DNS_QUERY_NAME_BUFFER_ID = SCDetectHelperMultiBufferProgressMpmRegister(
         b"dns.query.name\0".as_ptr() as *const libc::c_char,
         b"dns query name\0".as_ptr() as *const libc::c_char,
@@ -407,6 +409,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         Some(dns_tx_get_query_name),
         1, // request or response complete
     );
+    SCDetectKeywordAppLayerMapRegister(g_dns_query_name_kw_id, G_DNS_QUERY_NAME_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"dns.rcode\0".as_ptr() as *const libc::c_char,
         desc: b"Match the DNS header rcode flag.\0".as_ptr() as *const libc::c_char,
@@ -423,6 +426,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DNS_RCODE_KW_ID, G_DNS_RCODE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"dns.rrtype\0".as_ptr() as *const libc::c_char,
         desc: b"Match the DNS rrtype in message body.\0".as_ptr() as *const libc::c_char,
@@ -439,6 +443,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DNS_RRTYPE_KW_ID, G_DNS_RRTYPE_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("dns.query"),
         desc: String::from("sticky buffer to match DNS query-buffer"),
@@ -458,6 +463,7 @@ pub unsafe extern "C" fn SCDetectDNSRegister() {
         Some(dns_tx_get_query), // reuse, will be called only toserver
         1,                      // request complete
     );
+    SCDetectKeywordAppLayerMapRegister(g_dns_query_name_kw_id, G_DNS_QUERY_BUFFER_ID);
 }
 
 #[cfg(test)]

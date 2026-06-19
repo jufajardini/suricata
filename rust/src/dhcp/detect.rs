@@ -26,8 +26,9 @@ use crate::detect::SIGMATCH_INFO_UINT64;
 use std::os::raw::{c_int, c_void};
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectHelperBufferProgressRegister,
-    SCDetectHelperKeywordRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
-    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
+    SCDetectHelperKeywordRegister, SCDetectKeywordAppLayerMapRegister,
+    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
+    Signature,
 };
 
 fn dhcp_tx_get_time(tx: &DHCPTransaction, code: u8) -> Option<u64> {
@@ -183,6 +184,7 @@ pub unsafe extern "C" fn SCDetectDHCPRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DHCP_LEASE_TIME_KW_ID, G_DHCP_LEASE_TIME_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"dhcp.rebinding_time\0".as_ptr() as *const libc::c_char,
         desc: b"match DHCP rebinding time\0".as_ptr() as *const libc::c_char,
@@ -198,6 +200,10 @@ pub unsafe extern "C" fn SCDetectDHCPRegister() {
         ALPROTO_DHCP,
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_DHCP_REBINDING_TIME_KW_ID,
+        G_DHCP_REBINDING_TIME_BUFFER_ID,
     );
     let kw = SCSigTableAppLiteElmt {
         name: b"dhcp.renewal_time\0".as_ptr() as *const libc::c_char,
@@ -215,4 +221,5 @@ pub unsafe extern "C" fn SCDetectDHCPRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         1,
     );
+    SCDetectKeywordAppLayerMapRegister(G_DHCP_RENEWAL_TIME_KW_ID, G_DHCP_RENEWAL_TIME_BUFFER_ID);
 }

@@ -29,7 +29,7 @@ use std::ptr;
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperMultiBufferMpmRegister,
-    SCDetectSignatureSetAppProto, Signature,
+    SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, Signature,
 };
 
 static mut G_SIP_PROTOCOL_BUFFER_ID: c_int = 0;
@@ -426,7 +426,7 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         url: String::from("/rules/sip-keywords.html#sip-protocol"),
         setup: sip_protocol_setup,
     };
-    let _g_sip_protocol_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_sip_protocol_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SIP_PROTOCOL_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"sip.protocol\0".as_ptr() as *const libc::c_char,
         b"sip.protocol\0".as_ptr() as *const libc::c_char,
@@ -434,13 +434,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_protocol_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_protocol_kw_id, G_SIP_PROTOCOL_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.stat_code"),
         desc: String::from("sticky buffer to match on the SIP status code"),
         url: String::from("/rules/sip-keywords.html#sip-stat-code"),
         setup: sip_stat_code_setup,
     };
-    let _g_sip_stat_code_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_sip_stat_code_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SIP_STAT_CODE_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"sip.stat_code\0".as_ptr() as *const libc::c_char,
         b"sip.stat_code\0".as_ptr() as *const libc::c_char,
@@ -448,13 +449,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOCLIENT,
         Some(sip_stat_code_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_stat_code_kw_id, G_SIP_STAT_CODE_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.stat_msg"),
         desc: String::from("sticky buffer to match on the SIP status message"),
         url: String::from("/rules/sip-keywords.html#sip-stat-msg"),
         setup: sip_stat_msg_setup,
     };
-    let _g_sip_stat_msg_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_sip_stat_msg_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SIP_STAT_MSG_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"sip.stat_msg\0".as_ptr() as *const libc::c_char,
         b"sip.stat_msg\0".as_ptr() as *const libc::c_char,
@@ -462,13 +464,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOCLIENT,
         Some(sip_stat_msg_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_stat_msg_kw_id, G_SIP_STAT_MSG_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.request_line"),
         desc: String::from("sticky buffer to match on the SIP request line"),
         url: String::from("/rules/sip-keywords.html#sip-request-line"),
         setup: sip_request_line_setup,
     };
-    let _g_sip_request_line_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_sip_request_line_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SIP_REQUEST_LINE_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"sip.request_line\0".as_ptr() as *const libc::c_char,
         b"sip.request_line\0".as_ptr() as *const libc::c_char,
@@ -476,13 +479,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER,
         Some(sip_request_line_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_request_line_kw_id, G_SIP_REQUEST_LINE_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.response_line"),
         desc: String::from("sticky buffer to match on the SIP response line"),
         url: String::from("/rules/sip-keywords.html#sip-response-line"),
         setup: sip_response_line_setup,
     };
-    let _g_sip_response_line_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_sip_response_line_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_SIP_RESPONSE_LINE_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"sip.response_line\0".as_ptr() as *const libc::c_char,
         b"sip.response_line\0".as_ptr() as *const libc::c_char,
@@ -490,13 +494,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOCLIENT,
         Some(sip_response_line_get),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_response_line_kw_id, G_SIP_RESPONSE_LINE_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.from"),
         desc: String::from("sticky buffer to match on the SIP From header"),
         url: String::from("/rules/sip-keywords.html#sip-from"),
         setup: sip_from_hdr_setup,
     };
-    let _g_sip_from_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_from_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_FROM_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.from\0".as_ptr() as *const libc::c_char,
         b"sip.from\0".as_ptr() as *const libc::c_char,
@@ -504,13 +509,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_from_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_from_hdr_kw_id, G_SIP_FROM_HDR_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.to"),
         desc: String::from("sticky buffer to match on the SIP To header"),
         url: String::from("/rules/sip-keywords.html#sip-to"),
         setup: sip_to_hdr_setup,
     };
-    let _g_sip_to_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_to_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_TO_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.to\0".as_ptr() as *const libc::c_char,
         b"sip.to\0".as_ptr() as *const libc::c_char,
@@ -518,13 +524,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_to_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_to_hdr_kw_id, G_SIP_TO_HDR_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.via"),
         desc: String::from("sticky buffer to match on the SIP Via header"),
         url: String::from("/rules/sip-keywords.html#sip-via"),
         setup: sip_via_hdr_setup,
     };
-    let _g_sip_via_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_via_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_VIA_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.via\0".as_ptr() as *const libc::c_char,
         b"sip.via\0".as_ptr() as *const libc::c_char,
@@ -532,13 +539,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_via_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_via_hdr_kw_id, G_SIP_VIA_HDR_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.user_agent"),
         desc: String::from("sticky buffer to match on the SIP User-Agent header"),
         url: String::from("/rules/sip-keywords.html#sip-user-agent"),
         setup: sip_ua_hdr_setup,
     };
-    let _g_sip_ua_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_ua_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_UA_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.ua\0".as_ptr() as *const libc::c_char,
         b"sip.ua\0".as_ptr() as *const libc::c_char,
@@ -546,13 +554,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_ua_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_ua_hdr_kw_id, G_SIP_UA_HDR_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.content_type"),
         desc: String::from("sticky buffer to match on the SIP Content-Type header"),
         url: String::from("/rules/sip-keywords.html#sip-content-type"),
         setup: sip_content_type_hdr_setup,
     };
-    let _g_sip_content_type_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_content_type_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_CONTENT_TYPE_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.content_type\0".as_ptr() as *const libc::c_char,
         b"sip.content_type\0".as_ptr() as *const libc::c_char,
@@ -560,13 +569,14 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_content_type_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_content_type_hdr_kw_id, G_SIP_CONTENT_TYPE_HDR_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("sip.content_length"),
         desc: String::from("sticky buffer to match on the SIP Content-Length header"),
         url: String::from("/rules/sip-keywords.html#sip-content-length"),
         setup: sip_content_length_hdr_setup,
     };
-    let _g_sip_content_length_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_sip_content_length_hdr_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_SIP_CONTENT_LENGTH_HDR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"sip.content_length\0".as_ptr() as *const libc::c_char,
         b"sip.content_length\0".as_ptr() as *const libc::c_char,
@@ -574,4 +584,5 @@ pub unsafe extern "C" fn SCDetectSipRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(sip_content_length_hdr_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_sip_content_length_hdr_kw_id, G_SIP_CONTENT_LENGTH_HDR_BUFFER_ID);
 }

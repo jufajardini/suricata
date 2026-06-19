@@ -32,8 +32,8 @@ use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, Flow, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperBufferProgressRegister,
     SCDetectHelperKeywordRegister, SCDetectHelperMultiBufferMpmRegister,
-    SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList, SCSigTableAppLiteElmt, SigMatchCtx,
-    Signature,
+    SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, SCSigMatchAppendSMToList,
+    SCSigTableAppLiteElmt, SigMatchCtx, Signature,
 };
 
 use super::mqtt::{MQTTState, MQTTTransaction, ALPROTO_MQTT};
@@ -922,7 +922,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
             SCLogError!("Invalid value for app-layer.protocols.mqtt.unsubscribe-topic-match-limit");
         }
     }
-    let _g_mqtt_unsub_topic_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_mqtt_unsub_topic_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_MQTT_UNSUB_TOPIC_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         keyword_name,
         b"unsubscribe topic query\0".as_ptr() as *const libc::c_char,
@@ -930,6 +930,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(unsub_topic_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_unsub_topic_kw_id, G_MQTT_UNSUB_TOPIC_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.type\0".as_ptr() as *const libc::c_char,
@@ -947,6 +948,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_MQTT_TYPE_KW_ID, G_MQTT_TYPE_BUFFER_ID);
 
     let keyword_name = b"mqtt.subscribe.topic\0".as_ptr() as *const libc::c_char;
     let kw = SigTableElmtStickyBuffer {
@@ -962,7 +964,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
             SCLogError!("Invalid value for app-layer.protocols.mqtt.subscribe-topic-match-limit");
         }
     }
-    let _g_mqtt_sub_topic_kw_id = helper_keyword_register_multi_buffer(&kw);
+    let g_mqtt_sub_topic_kw_id = helper_keyword_register_multi_buffer(&kw);
     G_MQTT_SUB_TOPIC_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         keyword_name,
         b"subscribe topic query\0".as_ptr() as *const libc::c_char,
@@ -970,6 +972,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(sub_topic_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_sub_topic_kw_id, G_MQTT_SUB_TOPIC_BUFFER_ID);
 
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.reason_code\0".as_ptr() as *const libc::c_char,
@@ -988,6 +991,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_MQTT_REASON_CODE_KW_ID, G_MQTT_REASON_CODE_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.connack.session_present\0".as_ptr() as *const libc::c_char,
         desc: b"match MQTT CONNACK session present flag\0".as_ptr() as *const libc::c_char,
@@ -1004,6 +1008,10 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         ALPROTO_MQTT,
         STREAM_TOCLIENT,
         0,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_MQTT_CONNACK_SESSIONPRESENT_KW_ID,
+        G_MQTT_CONNACK_SESSIONPRESENT_BUFFER_ID,
     );
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.qos\0".as_ptr() as *const libc::c_char,
@@ -1022,13 +1030,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_MQTT_QOS_KW_ID, G_MQTT_QOS_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.publish.topic"),
         desc: String::from("sticky buffer to match on the MQTT PUBLISH topic"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-publish-topic"),
         setup: mqtt_pub_topic_setup,
     };
-    let _g_mqtt_pub_topic_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_pub_topic_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_PUB_TOPIC_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.publish.topic\0".as_ptr() as *const libc::c_char,
         b"MQTT PUBLISH topic\0".as_ptr() as *const libc::c_char,
@@ -1036,13 +1045,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(mqtt_pub_topic_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_pub_topic_kw_id, G_MQTT_PUB_TOPIC_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.publish.message"),
         desc: String::from("sticky buffer to match on the MQTT PUBLISH message"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-publish-message"),
         setup: mqtt_pub_msg_setup,
     };
-    let _g_mqtt_pub_msg_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_pub_msg_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_PUB_MSG_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.publish.message\0".as_ptr() as *const libc::c_char,
         b"MQTT PUBLISH message\0".as_ptr() as *const libc::c_char,
@@ -1050,6 +1060,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(mqtt_pub_msg_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_pub_msg_kw_id, G_MQTT_PUB_MSG_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.protocol_version\0".as_ptr() as *const libc::c_char,
         desc: b"match MQTT protocol version\0".as_ptr() as *const libc::c_char,
@@ -1065,6 +1076,10 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         ALPROTO_MQTT,
         STREAM_TOSERVER,
         0,
+    );
+    SCDetectKeywordAppLayerMapRegister(
+        G_MQTT_PROTOCOL_VERSION_KW_ID,
+        G_MQTT_PROTOCOL_VERSION_BUFFER_ID,
     );
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.flags\0".as_ptr() as *const libc::c_char,
@@ -1082,6 +1097,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_MQTT_FLAGS_KW_ID, G_MQTT_FLAGS_BUFFER_ID);
     let kw = SCSigTableAppLiteElmt {
         name: b"mqtt.connect.flags\0".as_ptr() as *const libc::c_char,
         desc: b"match MQTT CONNECT variable header flags\0".as_ptr() as *const libc::c_char,
@@ -1098,13 +1114,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         0,
     );
+    SCDetectKeywordAppLayerMapRegister(G_MQTT_CONN_FLAGS_KW_ID, G_MQTT_CONN_FLAGS_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.willtopic"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT will topic"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-willtopic"),
         setup: mqtt_conn_willtopic_setup,
     };
-    let _g_mqtt_conn_willtopic_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_willtopic_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_WILLTOPIC_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.willtopic\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT will topic\0".as_ptr() as *const libc::c_char,
@@ -1112,13 +1129,17 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_willtopic_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(
+        g_mqtt_conn_willtopic_kw_id,
+        G_MQTT_CONN_WILLTOPIC_BUFFER_ID,
+    );
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.willmessage"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT will message"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-willmessage"),
         setup: mqtt_conn_willmsg_setup,
     };
-    let _g_mqtt_conn_willmsg_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_willmsg_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_WILLMSG_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.willmessage\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT will message\0".as_ptr() as *const libc::c_char,
@@ -1126,13 +1147,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_willmsg_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_conn_willmsg_kw_id, G_MQTT_CONN_WILLMSG_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.username"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT username"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-username"),
         setup: mqtt_conn_username_setup,
     };
-    let _g_mqtt_conn_username_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_username_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_USERNAME_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.username\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT username\0".as_ptr() as *const libc::c_char,
@@ -1140,13 +1162,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_username_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_conn_username_kw_id, G_MQTT_CONN_USERNAME_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.protocol_string"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT protocol string"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-protocol-string"),
         setup: mqtt_conn_protocolstring_setup,
     };
-    let _g_mqtt_conn_protostr_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_protostr_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_PROTOCOLSTRING_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.protocol_string\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT protocol string\0".as_ptr() as *const libc::c_char,
@@ -1154,13 +1177,17 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_protocolstring_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(
+        g_mqtt_conn_protostr_kw_id,
+        G_MQTT_CONN_PROTOCOLSTRING_BUFFER_ID,
+    );
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.password"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT password"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-password"),
         setup: mqtt_conn_password_setup,
     };
-    let _g_mqtt_conn_password_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_password_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_PASSWORD_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.password\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT password\0".as_ptr() as *const libc::c_char,
@@ -1168,13 +1195,14 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_password_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_conn_password_kw_id, G_MQTT_CONN_PASSWORD_BUFFER_ID);
     let kw = SigTableElmtStickyBuffer {
         name: String::from("mqtt.connect.clientid"),
         desc: String::from("sticky buffer to match on the MQTT CONNECT clientid"),
         url: String::from("/rules/mqtt-keywords.html#mqtt-connect-clientid"),
         setup: mqtt_conn_clientid_setup,
     };
-    let _g_mqtt_conn_password_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_mqtt_conn_clientid_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_MQTT_CONN_CLIENTID_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"mqtt.connect.clientid\0".as_ptr() as *const libc::c_char,
         b"MQTT CONNECT clientid\0".as_ptr() as *const libc::c_char,
@@ -1182,6 +1210,7 @@ pub unsafe extern "C" fn SCDetectMqttRegister() {
         STREAM_TOSERVER,
         Some(mqtt_conn_clientid_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_mqtt_conn_clientid_kw_id, G_MQTT_CONN_CLIENTID_BUFFER_ID);
 }
 
 #[cfg(test)]

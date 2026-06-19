@@ -24,7 +24,7 @@ use crate::pgsql::parser::PgsqlFEMessage;
 use std::os::raw::{c_int, c_void};
 use suricata_sys::sys::{
     DetectEngineCtx, SCDetectBufferSetActiveList, SCDetectHelperBufferMpmRegister,
-    SCDetectSignatureSetAppProto, Signature,
+    SCDetectKeywordAppLayerMapRegister, SCDetectSignatureSetAppProto, Signature,
 };
 
 static mut G_PGSQL_QUERY_BUFFER_ID: c_int = 0;
@@ -67,7 +67,7 @@ pub unsafe extern "C" fn SCDetectPgsqlRegister() {
         url: String::from("/rules/pgsql-keywords.html#pgsql-query"),
         setup: pgsql_detect_query_setup,
     };
-    let _g_pgsql_query_kw_id = helper_keyword_register_sticky_buffer(&kw);
+    let g_pgsql_query_kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_PGSQL_QUERY_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"pgsql.query\0".as_ptr() as *const libc::c_char,
         b"pgsql query request content\0".as_ptr() as *const libc::c_char,
@@ -75,4 +75,5 @@ pub unsafe extern "C" fn SCDetectPgsqlRegister() {
         STREAM_TOSERVER,
         Some(pgsql_detect_query_get_data),
     );
+    SCDetectKeywordAppLayerMapRegister(g_pgsql_query_kw_id, G_PGSQL_QUERY_BUFFER_ID);
 }

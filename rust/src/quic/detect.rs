@@ -27,7 +27,8 @@ use std::ptr;
 use suricata_sys::sys::{
     DetectEngineCtx, DetectEngineThreadCtx, SCDetectBufferSetActiveList,
     SCDetectHelperBufferMpmRegister, SCDetectHelperMultiBufferMpmRegister,
-    SCDetectRegisterBufferLowerMd5Callbacks, SCDetectSignatureSetAppProto, Signature,
+    SCDetectKeywordAppLayerMapRegister, SCDetectRegisterBufferLowerMd5Callbacks,
+    SCDetectSignatureSetAppProto, Signature,
 };
 
 unsafe extern "C" fn quic_tx_get_ua(
@@ -227,7 +228,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         url: String::from("/rules/quic-keywords.html#quic-version"),
         setup: quic_version_setup,
     };
-    helper_keyword_register_sticky_buffer(&kw);
+    let kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_QUIC_VERSION_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"quic_version\0".as_ptr() as *const libc::c_char,
         b"quic version\0".as_ptr() as *const libc::c_char,
@@ -235,6 +236,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         STREAM_TOSERVER | STREAM_TOCLIENT,
         Some(quic_tx_get_version),
     );
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_QUIC_VERSION_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("quic.sni"),
@@ -243,7 +245,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         url: String::from(""),
         setup: quic_sni_setup,
     };
-    helper_keyword_register_sticky_buffer(&kw);
+    let kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_QUIC_SNI_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"quic_sni\0".as_ptr() as *const libc::c_char,
         b"quic sni\0".as_ptr() as *const libc::c_char,
@@ -251,6 +253,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         STREAM_TOSERVER,
         Some(quic_tx_get_sni),
     );
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_QUIC_SNI_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("quic.ua"),
@@ -259,7 +262,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         url: String::from(""),
         setup: quic_ua_setup,
     };
-    helper_keyword_register_sticky_buffer(&kw);
+    let kw_id = helper_keyword_register_sticky_buffer(&kw);
     G_QUIC_UA_BUFFER_ID = SCDetectHelperBufferMpmRegister(
         b"quic_ua\0".as_ptr() as *const libc::c_char,
         b"quic ua\0".as_ptr() as *const libc::c_char,
@@ -267,6 +270,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         STREAM_TOSERVER,
         Some(quic_tx_get_ua),
     );
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_QUIC_UA_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("quic.cyu.string"),
@@ -274,7 +278,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         url: String::from("/rules/quic-keywords.html#quic-cyu-string"),
         setup: quic_cyu_string_setup,
     };
-    helper_keyword_register_multi_buffer(&kw);
+    let kw_id = helper_keyword_register_multi_buffer(&kw);
     G_QUIC_CYU_STR_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"quic.cyu.string\0".as_ptr() as *const libc::c_char,
         b"QUIC CYU String\0".as_ptr() as *const libc::c_char,
@@ -282,6 +286,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         STREAM_TOSERVER,
         Some(quic_tx_get_cyu_string),
     );
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_QUIC_CYU_STR_BUFFER_ID);
 
     let kw = SigTableElmtStickyBuffer {
         name: String::from("quic.cyu.hash"),
@@ -289,7 +294,7 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         url: String::from("/rules/quic-keywords.html#quic-cyu-hash"),
         setup: quic_cyu_hash_setup,
     };
-    helper_keyword_register_multi_buffer(&kw);
+    let kw_id = helper_keyword_register_multi_buffer(&kw);
     G_QUIC_CYU_HASH_BUFFER_ID = SCDetectHelperMultiBufferMpmRegister(
         b"quic.cyu.hash\0".as_ptr() as *const libc::c_char,
         b"QUIC CYU Hash\0".as_ptr() as *const libc::c_char,
@@ -298,4 +303,5 @@ pub unsafe extern "C" fn SCDetectQuicRegister() {
         Some(quic_tx_get_cyu_hash),
     );
     SCDetectRegisterBufferLowerMd5Callbacks(b"quic.cyu.hash\0".as_ptr() as *const libc::c_char);
+    SCDetectKeywordAppLayerMapRegister(kw_id, G_QUIC_CYU_HASH_BUFFER_ID);
 }
