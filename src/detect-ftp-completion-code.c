@@ -30,6 +30,7 @@
 #include "detect-engine.h"
 #include "detect-engine-buffer.h"
 #include "detect-engine-helper.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-ftp-completion-code.h"
 
 #include "app-layer.h"
@@ -102,6 +103,7 @@ void DetectFtpCompletionCodeRegister(void)
     DetectBufferTypeSetDescriptionByName(BUFFER_NAME, BUFFER_DESC);
 
     g_ftp_ccode_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_COMPLETION_CODE, g_ftp_ccode_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }

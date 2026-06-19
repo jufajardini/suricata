@@ -30,6 +30,7 @@
 #include "detect-engine.h"
 #include "detect-engine-buffer.h"
 #include "detect-engine-helper.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-engine-content-inspection.h"
 #include "detect-ftp-reply.h"
 
@@ -104,6 +105,7 @@ void DetectFtpReplyRegister(void)
     DetectBufferTypeSetDescriptionByName(BUFFER_NAME, BUFFER_DESC);
 
     g_ftp_reply_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_REPLY, g_ftp_reply_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }

@@ -28,6 +28,7 @@
 #include "detect.h"
 #include "detect-parse.h"
 #include "detect-engine.h"
+#include "detect-engine-keyword-map.h"
 
 #include "rust.h"
 #include "flow.h"
@@ -138,6 +139,7 @@ void DetectFtpModeRegister(void)
     DetectBufferTypeSetDescriptionByName(BUFFER_NAME, BUFFER_DESC);
 
     g_ftp_mode_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_MODE, g_ftp_mode_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }

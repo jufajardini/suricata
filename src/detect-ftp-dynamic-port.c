@@ -31,6 +31,7 @@
 #include "detect-engine-mpm.h"
 #include "detect-engine-prefilter.h"
 #include "detect-engine-uint.h"
+#include "detect-engine-keyword-map.h"
 #include "detect-content.h"
 
 #include "flow.h"
@@ -117,6 +118,7 @@ void DetectFtpDynamicPortRegister(void)
     DetectBufferTypeSetDescriptionByName(BUFFER_NAME, BUFFER_DESC);
 
     g_ftp_dynport_buffer_id = DetectBufferTypeGetByName(BUFFER_NAME);
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_DYNPORT, g_ftp_dynport_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }

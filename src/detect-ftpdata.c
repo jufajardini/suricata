@@ -29,6 +29,7 @@
 #include "detect-parse.h"
 #include "detect-engine.h"
 #include "detect-engine-state.h"
+#include "detect-engine-keyword-map.h"
 
 #include "app-layer-ftp.h"
 
@@ -80,7 +81,7 @@ void DetectFtpdataRegister(void) {
     DetectAppLayerInspectEngineRegister("ftpdata_command", ALPROTO_FTPDATA, SIG_FLAG_TOCLIENT, 0,
             DetectEngineInspectGenericList, NULL);
     g_ftpdata_buffer_id = DetectBufferTypeGetByName("ftpdata_command");
-
+    DetectKeywordAppLayerMapRegister(DETECT_FTPDATA, g_ftpdata_buffer_id);
     /* set up the PCRE for keyword parsing */
     DetectSetupParseRegexes(PARSE_REGEX, &parse_regex);
 }

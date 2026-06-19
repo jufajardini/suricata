@@ -32,6 +32,7 @@
 #include "detect-engine-state.h"
 #include "detect-content.h"
 #include "detect-engine-build.h"
+#include "detect-engine-keyword-map.h"
 
 #include "app-layer.h"
 #include "app-layer-parser.h"
@@ -68,6 +69,7 @@ void DetectFtpbounceRegister(void)
     sigmatch_table[DETECT_FTPBOUNCE].flags = SIGMATCH_NOOPT | SIGMATCH_SUPPORT_FIREWALL;
 
     g_ftp_request_list_id = DetectBufferTypeGetByName("ftp:request_complete:generic");
+    DetectKeywordAppLayerMapRegister(DETECT_FTPBOUNCE, g_ftp_request_list_id);
 }
 
 /**

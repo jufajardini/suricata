@@ -27,6 +27,7 @@
 
 #include "detect-parse.h"
 #include "detect-engine.h"
+#include "detect-engine-keyword-map.h"
 
 #include "app-layer-ftp.h"
 
@@ -131,4 +132,5 @@ void DetectFtpReplyReceivedRegister(void)
     DetectAppLayerInspectEngineRegister("ftp.reply_received", ALPROTO_FTP, SIG_FLAG_TOCLIENT, 0,
             DetectEngineInspectGenericList, NULL);
     g_ftp_reply_received_buffer_id = DetectBufferTypeGetByName("ftp.reply_received");
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_REPLY_RECEIVED, g_ftp_reply_received_buffer_id);
 }

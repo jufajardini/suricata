@@ -33,6 +33,7 @@
 #include "detect-engine-prefilter.h"
 #include "detect-engine-helper.h"
 #include "detect-content.h"
+#include "detect-engine-keyword-map.h"
 
 #include "flow.h"
 
@@ -98,6 +99,7 @@ void DetectFtpCommandDataRegister(void)
 
     g_ftp_cmd_data_buffer_id = SCDetectHelperBufferProgressMpmRegister(BUFFER_NAME, BUFFER_DESC,
             ALPROTO_FTP, STREAM_TOSERVER, DetectFTPCommandDataGetData, FTP_STATE_FINISHED);
+    DetectKeywordAppLayerMapRegister(DETECT_FTP_COMMAND_DATA, g_ftp_cmd_data_buffer_id);
 
     SCLogDebug("registering " BUFFER_NAME " rule option");
 }
