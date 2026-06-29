@@ -263,6 +263,11 @@
 
    List all supported application layer protocols.
 
+.. option:: --list-app-layer-keywords[=<proto>]
+
+   List all keywords registered for the given protocol.
+   All app-protos and their keywords if none provided.
+
 .. option:: --list-keywords=[all|csv|<kword>]
 
    List all supported rule keywords.
