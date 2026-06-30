@@ -382,6 +382,10 @@ void DetectDNP3Register(void)
     DetectAppLayerInspectEngineRegister(
             "dnp3_ind", ALPROTO_DNP3, SIG_FLAG_TOCLIENT, 0, DetectEngineInspectGenericList, NULL);
     g_dnp3_ind_buffer_id = DetectBufferTypeRegister("dnp3_ind");
+    DetectKeywordAppLayerMapRegister(DETECT_DNP3IND, g_dnp3_ind_buffer_id);
+    // TODO to be confirmed whether these registrations are correct
+    DetectKeywordAppLayerMapRegister(DETECT_DNP3OBJ, g_dnp3_match_buffer_id);
+    DetectKeywordAppLayerMapRegister(DETECT_DNP3FUNC, g_dnp3_match_buffer_id);
 }
 
 #ifdef UNITTESTS
