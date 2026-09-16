@@ -410,8 +410,15 @@ function CheckBranch {
     # by "| head" prematurely. Use work-around with writing to tmpfile first.
     local format_changes="$git_clang_format --extensions c,h $first_commit^"
     local tmpfile=$(mktemp /tmp/clang-format.check.XXXXXX)
-    $format_changes > $tmpfile
+    $format_changes > $tmpfile 2>&1
+    local format_rcr=_$?
     local changes=$(cat $tmpfile | head -1)
+    # git-clang-format exits non-zero only on real errors, never on found difs
+    if [ $format_rc -ne 0 ]; then
+        cat $tmpfile 1>&2
+        rm $tmpfile
+        Die "git clang-format failed"
+    fi
     if [ $show_diff -eq 1 -o $show_diffstat -eq 1 ]; then
         cat $tmpfile
         echo ""
