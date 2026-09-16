@@ -398,6 +398,13 @@ function CheckBranch {
     # Find first commit on branch. Use $first_commit^ if you need the
     # commit on main we branched off.
     local first_commit=$(FirstCommitOfBranch)
+    # No commits of our own, e.g. when the branch is the baseline itself.
+    if [ -z "first_commit" ]; then
+        if [ $quiet -ne 1 ]; then
+            echo "no commits on branch"
+        fi
+        return $EXIT_CODE_OK
+    fi
 
     # git-clang-format is a python script that does not like SIGPIPE shut down
     # by "| head" prematurely. Use work-around with writing to tmpfile first.
@@ -466,6 +473,10 @@ function ReformatBranch {
     # Find first commit on branch. Use $first_commit^ if you need the
     # commit on main we branched off.
     local first_commit=$(FirstCommitOfBranch)
+    if [ -z "$first_commit" ]; then
+        echo "no commits on branch"
+        ExitWith $EXIT_CODE_OK
+    fi
     echo "First commit on branch: $first_commit"
 
     $GIT_CLANG_FORMAT --style file --extensions c,h $with_unstaged $first_commit^
