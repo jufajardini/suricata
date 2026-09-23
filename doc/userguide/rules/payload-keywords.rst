@@ -343,7 +343,18 @@ absent
 ------
 
 The keyword ``absent`` checks that a sticky buffer does not exist.
-It can be used without any argument to match only on absent buffer :
+It can be used with or without any argument.
+
+Optional arguments are:
+    - or_else
+    - error_or
+    - must_error
+    - must_succeed
+
+No argument
+~~~~~~~~~~~
+
+Use without any argument to match only on absent buffer:
 
 Example of ``absent`` in a rule:
 
@@ -351,6 +362,8 @@ Example of ``absent`` in a rule:
 
    alert http any any -> any any (msg:"HTTP request without referer";  :example-rule-emphasis:`http.referer; absent;` sid:1; rev:1;)
 
+or_else
+~~~~~~~
 
 It can take an argument "or_else" to match on absent buffer or on what comes next such as negated content, for instance :
 
@@ -358,6 +371,9 @@ It can take an argument "or_else" to match on absent buffer or on what comes nex
 
    alert http any any -> any any (msg:"HTTP request without referer";  :example-rule-emphasis:`http.referer; absent: or_else;` \
        content: !"abc"; sid:1; rev:1;)
+
+error_or
+~~~~~~~~
 
 It can also take an argument "error_or" to match on transform errors or on subsequent content matches.
 This is useful for detecting when data transformations fail (e.g., invalid base64 encoding) or when the
@@ -368,6 +384,9 @@ decoded data matches a pattern:
    alert http any any -> any any (msg:"Detect base64 decode error or malicious content"; file.data; \
        from_base64; :example-rule-emphasis:`absent: error_or;` content:"malicious"; sid:1; rev:1;)
 
+must_error
+~~~~~~~~~~
+
 It can also take an argument "must_error" to match only when a transform fails.
 Unlike ``error_or``, there is no fallthrough to subsequent keywords — if the transform succeeds,
 the match fails:
@@ -377,6 +396,9 @@ the match fails:
    alert http any any -> any any (msg:"Detect base64 decode failure"; file.data; \
        from_base64; :example-rule-emphasis:`absent: must_error;` sid:1; rev:1;)
 
+must_succeed
+~~~~~~~~~~~~
+
 It can also take an argument "must_succeed" to ensure that subsequent keywords only match
 against successfully-transformed data. If a transform failure is detected, the match is
 rejected — preventing false positives from matching against the original (pre-transform) buffer:
@@ -385,6 +407,9 @@ rejected — preventing false positives from matching against the original (pre-
 
    alert http any any -> any any (msg:"Detect malware only in decoded base64"; file.data; \
        from_base64; :example-rule-emphasis:`absent: must_succeed;` content:"malware"; sid:1; rev:1;)
+
+Differences
+~~~~~~~~~~~
 
 The options differ as follows:
 
@@ -396,6 +421,9 @@ The options differ as follows:
   same buffer, but other sticky buffers can follow. Does not match on a truly-absent buffer.
 * ``must_succeed`` rejects the match if a transform fails; subsequent keywords only run on
   successfully-transformed data. Does not match on a truly-absent buffer.
+
+Important to Know
+~~~~~~~~~~~~~~~~~
 
 When a transform like ``from_base64`` encounters invalid data, it sets an error flag on the inspection
 buffer but leaves the buffer intact to preserve prefilter capability. Without ``must_succeed``, a rule
